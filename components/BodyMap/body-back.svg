@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 560" width="240" height="560">
+  <!--
+    Silhouette anatomique — vue de dos.
+    Même silhouette et mêmes conventions que body-front.svg : moitié gauche
+    dessinée, moitié droite obtenue par `translate(240,0) scale(-1,1)`.
+    Les ids `m-*` correspondent à `muscle.svg_back_id`.
+  -->
+
+  <g id="base" fill="#2E343D">
+    <path d="M96,42 A24,31 0 1,1 144,42 A24,31 0 1,1 96,42 Z"/>
+    <path d="M104,60 C104,76 100,88 92,96 L148,96 C140,88 136,76 136,60 Z"/>
+    <path id="silhouette-half" d="M120,90
+             C107,90 95,93 85,99
+             C68,104 55,114 48,131
+             C42,149 38,171 35,196
+             C32,214 29,236 25,257
+             C22,275 20,292 19,305
+             C17,318 19,332 25,334
+             C32,336 36,328 38,317
+             C41,300 45,281 49,262
+             C53,241 58,218 64,198
+             C69,180 72,172 75,166
+             C79,188 82,204 84,219
+             C86,232 82,246 74,258
+             C67,274 63,292 64,312
+             C62,340 67,364 73,384
+             C77,400 72,414 71,430
+             C70,454 78,478 84,498
+             C86,510 80,520 74,526
+             C70,530 72,535 78,535
+             C92,535 104,533 106,527
+             C108,517 104,506 103,496
+             C101,472 104,446 106,424
+             C108,402 110,384 112,364
+             C114,332 116,300 118,276
+             L120,268 Z"/>
+    <use href="#silhouette-half" transform="translate(240,0) scale(-1,1)"/>
+  </g>
+
+  <g id="muscles" fill="#39404A">
+
+    <g id="m-trapezius-upper">
+      <path id="p-trap-u" d="M119,82 C105,86 90,93 76,104 C85,113 96,121 107,126 C112,128 117,126 119,121 Z"/>
+      <use href="#p-trap-u" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-trapezius-lower">
+      <path id="p-trap-l" d="M119,168 C112,176 105,188 101,200 C107,210 113,217 119,222 Z"/>
+      <use href="#p-trap-l" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-rhomboids">
+      <path id="p-rhom" d="M119,124 C110,131 103,140 99,148 C105,159 112,167 119,172 Z"/>
+      <use href="#p-rhom" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-deltoid-posterior">
+      <path id="p-delt-post" d="M75,103 C62,111 51,124 48,140 C54,150 65,154 72,149 C76,133 77,117 75,103 Z"/>
+      <use href="#p-delt-post" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-deltoid-lateral">
+      <path id="p-delt-lat-b" d="M48,141 C45,152 43,164 43,175 C48,181 55,180 58,173 C60,163 59,153 57,146 C54,142 51,140 48,141 Z"/>
+      <use href="#p-delt-lat-b" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-infraspinatus">
+      <path id="p-infra" d="M74,112 C84,118 92,128 98,142 C94,153 85,160 77,158 C72,146 71,126 74,112 Z"/>
+      <use href="#p-infra" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-teres-major">
+      <path id="p-teres" d="M78,160 C86,163 93,168 98,175 C92,183 84,185 78,180 C76,175 76,166 78,160 Z"/>
+      <use href="#p-teres" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-latissimus-dorsi">
+      <path id="p-lat" d="M78,174 C89,182 101,193 109,205 C108,221 102,233 95,242 C87,237 81,224 79,210 C76,196 76,185 78,174 Z"/>
+      <use href="#p-lat" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <path id="m-erector-spinae" d="M108,214 C112,210 128,210 132,214 C134,228 134,244 132,254 C126,259 114,259 108,254 C106,244 106,228 108,214 Z"/>
+
+    <g id="m-triceps-brachii">
+      <path id="p-triceps" d="M53,150 C48,164 44,180 41,196 C46,204 55,206 60,199 C64,184 67,168 70,155 C65,148 57,146 53,150 Z"/>
+      <use href="#p-triceps" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-forearm-extensors">
+      <path id="p-fa-ext" d="M35,212 C30,230 26,250 23,268 C27,278 35,279 39,272 C43,252 47,233 52,216 C46,209 39,208 35,212 Z"/>
+      <use href="#p-fa-ext" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-gluteus-medius">
+      <path id="p-glute-med" d="M84,236 C92,238 100,242 106,248 C102,258 92,263 84,259 C80,251 80,242 84,236 Z"/>
+      <use href="#p-glute-med" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-gluteus-maximus">
+      <path id="p-glute-max" d="M84,253 C95,253 109,259 118,269 C116,287 107,301 95,305 C85,305 78,295 77,281 C77,269 80,259 84,253 Z"/>
+      <use href="#p-glute-max" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-hamstrings">
+      <path id="p-ham" d="M93,308 C85,316 79,330 78,346 C77,366 81,379 87,389 C95,391 102,387 105,379 C108,353 109,327 107,310 C103,306 97,305 93,308 Z"/>
+      <use href="#p-ham" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-gastrocnemius">
+      <path id="p-gastro" d="M85,393 C79,403 76,419 77,435 C79,449 85,457 91,455 C96,451 98,437 97,421 C96,407 93,395 89,392 C87,391 86,391 85,393 Z"/>
+      <use href="#p-gastro" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-soleus">
+      <path id="p-soleus" d="M81,441 C78,457 78,473 81,487 C85,493 91,492 93,485 C95,471 95,455 92,443 C89,439 84,438 81,441 Z"/>
+      <use href="#p-soleus" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+  </g>
+
+  <g id="detail" fill="none" stroke="#0B0D10" stroke-opacity="0.4" stroke-width="1.4" stroke-linecap="round">
+    <!-- sillon vertébral -->
+    <path d="M120,104 L120,212"/>
+    <!-- pli fessier -->
+    <path d="M120,270 L120,300"/>
+    <path d="M95,305 C104,308 114,308 120,304"/>
+    <path d="M145,305 C136,308 126,308 120,304"/>
+    <!-- creux poplité -->
+    <path d="M78,386 C88,392 100,390 105,379"/>
+    <path d="M162,386 C152,392 140,390 135,379"/>
+  </g>
+</svg>

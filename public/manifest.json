@@ -1,0 +1,16 @@
+{
+  "name": "Muscu Tracker",
+  "short_name": "Muscu",
+  "description": "Suivi d'entraînement en salle — hors ligne, sur cet appareil.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0B0D10",
+  "theme_color": "#0B0D10",
+  "lang": "fr",
+  "icons": [
+    { "src": "/icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" },
+    { "src": "/icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "maskable" }
+  ]
+}

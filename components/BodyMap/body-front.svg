@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 560" width="240" height="560">
+  <!--
+    Silhouette anatomique — vue de face.
+    Convention : tout est dessiné pour la moitié gauche (x < 120) puis dupliqué
+    par `transform="translate(240,0) scale(-1,1)"`. Les muscles impairs
+    (grand droit) sont dessinés d'un seul tenant, centrés sur x = 120.
+    Chaque groupe musculaire porte un id `m-*` : c'est lui que `muscle.svg_front_id`
+    référence et que BodyMap colorie. `scripts/svg-to-paths.mjs` extrait ces
+    groupes vers components/BodyMap/paths.generated.ts.
+  -->
+
+  <g id="base" fill="#2E343D">
+    <!-- tête -->
+    <path d="M96,42 A24,31 0 1,1 144,42 A24,31 0 1,1 96,42 Z"/>
+    <!-- cou : trapèze large, sans décrochement avec la mâchoire -->
+    <path d="M104,60 C104,76 100,88 92,96 L148,96 C140,88 136,76 136,60 Z"/>
+    <!-- corps : moitié gauche, puis miroir -->
+    <path id="silhouette-half" d="M120,90
+             C107,90 95,93 85,99
+             C68,104 55,114 48,131
+             C42,149 38,171 35,196
+             C32,214 29,236 25,257
+             C22,275 20,292 19,305
+             C17,318 19,332 25,334
+             C32,336 36,328 38,317
+             C41,300 45,281 49,262
+             C53,241 58,218 64,198
+             C69,180 72,172 75,166
+             C79,188 82,204 84,219
+             C86,232 82,246 74,258
+             C67,274 63,292 64,312
+             C62,340 67,364 73,384
+             C77,400 72,414 71,430
+             C70,454 78,478 84,498
+             C86,510 80,520 74,526
+             C70,530 72,535 78,535
+             C92,535 104,533 106,527
+             C108,517 104,506 103,496
+             C101,472 104,446 106,424
+             C108,402 110,384 112,364
+             C114,332 116,300 118,276
+             L120,268 Z"/>
+    <use href="#silhouette-half" transform="translate(240,0) scale(-1,1)"/>
+  </g>
+
+  <g id="muscles" fill="#39404A">
+
+    <g id="m-sternocleidomastoid">
+      <path id="p-scm" d="M111,66 C111,78 107,88 100,95 L111,95 C116,88 117,76 115,66 Z"/>
+      <use href="#p-scm" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-trapezius-upper">
+      <path id="p-trap-f" d="M113,86 C99,90 86,95 74,104 C87,108 100,111 110,115 C114,106 115,95 113,86 Z"/>
+      <use href="#p-trap-f" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-deltoid-anterior">
+      <path id="p-delt-ant" d="M75,103 C62,111 51,124 48,140 C54,150 65,154 72,149 C76,133 77,117 75,103 Z"/>
+      <use href="#p-delt-ant" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-deltoid-lateral">
+      <path id="p-delt-lat" d="M48,141 C45,152 43,164 42,176 C47,182 55,181 58,174 C60,164 59,154 57,146 C54,142 51,140 48,141 Z"/>
+      <use href="#p-delt-lat" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-pectoralis-major">
+      <path id="p-pec" d="M116,113 C104,111 90,108 79,105 C76,118 76,133 79,147 C91,154 106,154 115,145 C119,135 119,123 116,113 Z"/>
+      <use href="#p-pec" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-serratus-anterior">
+      <path id="p-serr" d="M80,151 C85,155 89,161 91,169 C87,175 81,177 78,172 C76,165 77,157 80,151 Z"/>
+      <use href="#p-serr" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-biceps-brachii">
+      <path id="p-biceps" d="M53,152 C48,166 43,182 40,198 C45,206 54,208 59,201 C63,186 66,170 69,157 C64,150 57,148 53,152 Z"/>
+      <use href="#p-biceps" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-forearm-flexors">
+      <path id="p-fa-flex" d="M35,214 C30,232 26,252 23,270 C27,280 35,281 39,274 C43,254 47,235 52,218 C46,211 39,210 35,214 Z"/>
+      <use href="#p-fa-flex" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <path id="m-rectus-abdominis" d="M107,155 C112,151 128,151 133,155 C136,179 136,211 133,235 C127,245 113,245 107,235 C104,211 104,179 107,155 Z"/>
+
+    <g id="m-obliques">
+      <path id="p-obl" d="M88,171 C92,187 95,204 95,220 C90,232 81,235 77,226 C77,206 82,188 88,171 Z"/>
+      <use href="#p-obl" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-hip-flexors">
+      <path id="p-hipflex" d="M97,242 C105,246 113,252 117,260 C111,268 101,270 93,264 C91,256 93,248 97,242 Z"/>
+      <use href="#p-hipflex" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-quadriceps">
+      <path id="p-quad" d="M95,281 C85,290 76,304 74,323 C72,347 77,368 83,385 C91,389 100,387 104,379 C108,351 110,313 108,285 C104,280 99,278 95,281 Z"/>
+      <use href="#p-quad" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-adductors">
+      <path id="p-add" d="M113,278 C111,301 109,324 107,347 C100,343 96,321 98,301 C102,289 107,280 113,278 Z"/>
+      <use href="#p-add" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+    <g id="m-tibialis-anterior">
+      <path id="p-tib" d="M85,414 C81,434 79,458 81,480 C85,486 91,486 93,478 C95,456 95,432 93,416 C90,412 88,412 85,414 Z"/>
+      <use href="#p-tib" transform="translate(240,0) scale(-1,1)"/>
+    </g>
+
+  </g>
+
+  <g id="detail" fill="none" stroke="#0B0D10" stroke-opacity="0.4" stroke-width="1.4" stroke-linecap="round">
+    <!-- linea alba + intersections tendineuses -->
+    <path d="M120,156 L120,239"/>
+    <path d="M108,180 L132,180"/>
+    <path d="M107,206 L133,206"/>
+    <path d="M108,230 L132,230"/>
+    <!-- pli sous-pectoral -->
+    <path d="M79,147 C91,154 106,154 115,145"/>
+    <path d="M161,147 C149,154 134,154 125,145"/>
+    <!-- rotule -->
+    <path d="M76,384 C86,391 99,389 104,379"/>
+    <path d="M164,384 C154,391 141,389 136,379"/>
+  </g>
+</svg>
