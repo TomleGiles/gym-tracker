@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BodyMap, highlightsFromIntensities } from '../../components/BodyMap/BodyMap';
 import { Button, Card, EmptyState, Icon, Screen, SectionTitle, Stat, Title } from '../../components/ui';
 import { useQuery } from '../../db/client';
+import { getSignedInAccount } from '../../db/queries/auth';
 import { listRoutines } from '../../db/queries/routines';
 import { getActiveSession, startSession } from '../../db/queries/sessions';
 import { getDashboard, getMuscleVolume } from '../../db/queries/stats';
@@ -16,6 +17,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const resetSessionUi = useActiveSession((s) => s.reset);
 
+  const account = useQuery(() => getSignedInAccount(), []);
   const active = useQuery(() => getActiveSession(), []);
   const routines = useQuery(() => listRoutines(), []);
   const dashboard = useQuery(() => getDashboard(), []);
@@ -33,6 +35,7 @@ export default function HomeScreen() {
 
   return (
     <Screen scroll>
+      {account ? <Text style={styles.greeting}>Salut {account.displayName} 👋</Text> : null}
       <Title>Muscu Tracker</Title>
 
       {active ? (
@@ -146,6 +149,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  greeting: { color: c.textDim, fontSize: 15, fontWeight: '600', marginBottom: -space.sm },
   resume: { borderColor: c.accent, borderWidth: 1.5 },
   resumeHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: c.accent },

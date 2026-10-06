@@ -7,7 +7,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { Loading } from '../components/ui';
-import { db, initDatabase } from '../db/client';
+import { db, initDatabase, useQuery } from '../db/client';
+import { getSignedInAccount } from '../db/queries/auth';
 import migrations from '../db/migrations/migrations';
 import { runSeed } from '../db/seed';
 import { configureNotifications } from '../lib/notifications';
@@ -56,6 +57,14 @@ function MigratedApp() {
   if (!success) return <Booting label="Migration du schéma…" />;
   if (!seeded) return <Booting label="Chargement des exercices…" />;
 
+  return <AppNavigator />;
+}
+
+/** Monté seulement une fois la base migrée : la lecture du compte en dépend. */
+function AppNavigator() {
+  const account = useQuery(() => getSignedInAccount(), []);
+  const signedIn = account !== null;
+
   return (
     <GestureHandlerRootView style={styles.fill}>
       <SafeAreaProvider>
@@ -75,17 +84,23 @@ function MigratedApp() {
             contentStyle: { backgroundColor: c.bg },
           }}
         >
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          {/* Le mode séance est plein écran, hors tabs (§5). */}
-          <Stack.Screen
-            name="session/[id]"
-            options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }}
-          />
-          <Stack.Screen name="exercises/[id]" options={{ title: '' }} />
-          <Stack.Screen name="routines/new" options={{ title: 'Nouvelle séance', presentation: 'modal' }} />
-          <Stack.Screen name="routines/[id]" options={{ title: 'Séance' }} />
-          <Stack.Screen name="history/[id]" options={{ title: 'Séance' }} />
-          <Stack.Screen name="history/volume" options={{ title: 'Volume par muscle' }} />
+          {/* Changer de garde suffit : expo-router redirige vers le premier écran autorisé. */}
+          <Stack.Protected guard={!signedIn}>
+            <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
+          </Stack.Protected>
+          <Stack.Protected guard={signedIn}>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
+            {/* Le mode séance est plein écran, hors tabs (§5). */}
+            <Stack.Screen
+              name="session/[id]"
+              options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }}
+            />
+            <Stack.Screen name="exercises/[id]" options={{ title: '' }} />
+            <Stack.Screen name="routines/new" options={{ title: 'Nouvelle séance', presentation: 'modal' }} />
+            <Stack.Screen name="routines/[id]" options={{ title: 'Séance' }} />
+            <Stack.Screen name="history/[id]" options={{ title: 'Séance' }} />
+            <Stack.Screen name="history/volume" options={{ title: 'Volume par muscle' }} />
+          </Stack.Protected>
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>

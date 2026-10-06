@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ExercisePicker } from '../../components/ExercisePicker';
@@ -23,6 +23,7 @@ import {
   updateSet,
 } from '../../db/queries/sessions';
 import type { ExerciseInSession, SetLog } from '../../db/schema';
+import { confirmDialog } from '../../lib/confirm';
 import { clockTime, duration, plural, relativeDay, tonnageLabel } from '../../lib/format';
 import { fmtE1rm, fmtKg, e1rm, tonnage, weightStep } from '../../lib/strength';
 import { c, font, radius, space } from '../../lib/theme';
@@ -466,20 +467,8 @@ function prefill(setIndex: number, entry: ExerciseInSession): Draft {
 }
 
 /* ------------------------------------------------------------------ *
- * Confirmations — Alert.alert n'a pas de boutons sur react-native-web.
+ * Confirmations
  * ------------------------------------------------------------------ */
-
-function confirmDialog(title: string, body: string, confirmLabel: string, onConfirm: () => void) {
-  if (Platform.OS === 'web') {
-    // eslint-disable-next-line no-alert
-    if (window.confirm(`${title}\n\n${body}`)) onConfirm();
-    return;
-  }
-  Alert.alert(title, body, [
-    { text: 'Annuler', style: 'cancel' },
-    { text: confirmLabel, style: 'destructive', onPress: onConfirm },
-  ]);
-}
 
 const confirmDiscard = (_id: string, onConfirm: () => void) =>
   confirmDialog(

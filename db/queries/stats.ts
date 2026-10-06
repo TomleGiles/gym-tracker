@@ -313,3 +313,27 @@ function computeStreakWeeks(): number {
   }
   return streak;
 }
+
+/* ------------------------------------------------------------------ *
+ * Profil — depuis le premier jour
+ * ------------------------------------------------------------------ */
+
+export type LifetimeStats = { sessions: number; tonnage: number; prs: number };
+
+export function getLifetimeStats(): LifetimeStats {
+  const totals = db
+    .select({
+      sessions: sql<number>`COUNT(DISTINCT ${session.id})`,
+      tonnage: sql<number>`COALESCE(SUM(${setLog.weightKg} * ${setLog.reps}), 0)`,
+      prs: sql<number>`COALESCE(SUM(${setLog.isPr}), 0)`,
+    })
+    .from(session)
+    .leftJoin(
+      setLog,
+      and(eq(setLog.sessionId, session.id), isNull(setLog.deletedAt), ne(setLog.setType, 'warmup')),
+    )
+    .where(isNull(session.deletedAt))
+    .get();
+
+  return { sessions: totals?.sessions ?? 0, tonnage: totals?.tonnage ?? 0, prs: totals?.prs ?? 0 };
+}

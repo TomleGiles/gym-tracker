@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import type { ComponentProps, ReactNode } from 'react';
+import type { ComponentProps, ComponentPropsWithRef, ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -207,7 +207,7 @@ export function Field({
   );
 }
 
-export function Input(props: ComponentProps<typeof TextInput>) {
+export function Input(props: ComponentPropsWithRef<typeof TextInput>) {
   return (
     <TextInput
       placeholderTextColor={c.textFaint}
@@ -289,6 +289,21 @@ export function Badge({ label, tone = 'default' }: { label: string; tone?: 'defa
       </Text>
     </View>
   );
+}
+
+/** Initiales sur pastille : pas de photo tant qu'il n'y a pas de serveur où la stocker. */
+export function Avatar({ name, size = 48 }: { name: string; size?: number }) {
+  return (
+    <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}>
+      <Text style={[styles.avatarLabel, { fontSize: size * 0.38 }]}>{initials(name)}</Text>
+    </View>
+  );
+}
+
+function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const letters = words.length > 1 ? words[0][0] + words[1][0] : (words[0] ?? '?').slice(0, 2);
+  return letters.toUpperCase();
 }
 
 export const styles = StyleSheet.create({
@@ -391,4 +406,13 @@ export const styles = StyleSheet.create({
     backgroundColor: c.surfaceAlt,
   },
   badgeLabel: { color: c.textDim, fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
+
+  avatar: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: c.accentDim,
+    borderWidth: 1.5,
+    borderColor: c.accent,
+  },
+  avatarLabel: { color: c.text, fontWeight: '800' },
 });

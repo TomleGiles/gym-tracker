@@ -183,6 +183,24 @@ export const exerciseStats = sqliteTable('exercise_stats', {
 });
 
 /* ------------------------------------------------------------------ *
+ * Compte — local tant que la sync n'existe pas : un seul compte par
+ * appareil, et toutes les données de cet appareil lui appartiennent.
+ * Le jour du serveur (et du partage de séances), l'id UUID v7 devient
+ * l'identifiant distant sans migration.
+ * ------------------------------------------------------------------ */
+
+export const user = sqliteTable('user', {
+  id: text('id').primaryKey(),
+  email: text('email').notNull().unique(), // toujours en minuscules
+  displayName: text('display_name').notNull(),
+  passwordHash: text('password_hash').notNull(),
+  passwordSalt: text('password_salt').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
+});
+
+/* ------------------------------------------------------------------ *
  * Infrastructure locale.
  * ------------------------------------------------------------------ */
 
@@ -227,6 +245,9 @@ export type Session = typeof session.$inferSelect;
 export type SessionExercise = typeof sessionExercise.$inferSelect;
 export type SetLog = typeof setLog.$inferSelect;
 export type ExerciseStats = typeof exerciseStats.$inferSelect;
+export type User = typeof user.$inferSelect;
+/** Ce que l'UI connaît du compte : jamais le hash. */
+export type Account = Pick<User, 'id' | 'email' | 'displayName' | 'createdAt'>;
 
 /** Un exercice avec ses muscles résolus — la forme utilisée par l'UI. */
 export type ExerciseWithMuscles = Exercise & {

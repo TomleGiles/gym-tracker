@@ -55,12 +55,23 @@ par toutes les mutations.
 
 | Écran | Route |
 |---|---|
+| Connexion / création de compte | `/login` |
+| Profil, déconnexion | `/profile` |
 | Accueil, reprise de séance, couverture musculaire | `/` |
 | Catalogue de séances | `/routines`, `/routines/new`, `/routines/[id]` |
 | Bibliothèque (120 exercices, 27 muscles) | `/exercises`, `/exercises/[id]` |
 | Historique, export JSON | `/history`, `/history/[id]` |
 | Volume hebdo par muscle | `/history/volume` |
 | **Mode séance** | `/session/[id]` |
+
+## Compte
+
+Un compte **local**, un seul par appareil : il verrouille l'accès et prépare le
+volet social (partage de séances entre partenaires), qui arrivera avec la sync.
+Toutes les routes sauf `/login` sont derrière un `Stack.Protected` dans
+`app/_layout.tsx`. La connexion persiste (clé `signed_in_user_id` de `meta`)
+jusqu'à la déconnexion explicite. Le mot de passe est haché (SHA-256 salé) ; il
+n'y a pas de récupération possible tant qu'il n'y a pas de serveur.
 
 ## Arborescence
 
