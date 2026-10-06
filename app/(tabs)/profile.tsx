@@ -1,17 +1,32 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { Avatar, Badge, Button, Card, Icon, Screen, SectionTitle, Stat, Title } from '../../components/ui';
+import { Text } from '../../components/Text';
+import {
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  Icon,
+  IconButton,
+  Screen,
+  SectionTitle,
+  Stat,
+  Title,
+} from '../../components/ui';
 import { useQuery } from '../../db/client';
 import { getSignedInAccount, signOut } from '../../db/queries/auth';
+import { WEEKLY_GOAL_RANGE, getWeeklyGoal, setWeeklyGoal } from '../../db/queries/engagement';
 import { getDashboard, getLifetimeStats } from '../../db/queries/stats';
+import { seedDemoData } from '../../db/seed/demo';
 import { confirmDialog } from '../../lib/confirm';
 import { tonnageLabel } from '../../lib/format';
-import { c, radius, space } from '../../lib/theme';
+import { c, font, radius, space, type } from '../../lib/theme';
 
 export default function ProfileScreen() {
   const account = useQuery(() => getSignedInAccount(), []);
   const lifetime = useQuery(() => getLifetimeStats(), []);
   const dashboard = useQuery(() => getDashboard(), []);
+  const goal = useQuery(() => getWeeklyGoal(), []);
 
   // Le garde de app/_layout.tsx démonte cet écran dès la déconnexion.
   if (!account) return null;
@@ -28,38 +43,64 @@ export default function ProfileScreen() {
       <View style={styles.identity}>
         <Avatar name={account.displayName} size={72} />
         <View style={styles.flex}>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text style={type.h2} numberOfLines={1}>
             {account.displayName}
           </Text>
-          <Text style={styles.email} numberOfLines={1}>
+          <Text style={type.small} numberOfLines={1}>
             {account.email}
           </Text>
-          <Text style={styles.since}>Membre depuis {since}</Text>
+          <Text style={[type.caption, { marginTop: space.xs }]}>Membre depuis {since}</Text>
         </View>
       </View>
 
-      <SectionTitle>Depuis le début</SectionTitle>
       <Card>
         <View style={styles.statRow}>
           <Stat value={String(lifetime.sessions)} label="Séances" />
-          <Stat value={tonnageLabel(lifetime.tonnage)} label="Tonnage" />
-          <Stat value={String(lifetime.prs)} label="Records" tone={lifetime.prs ? 'accent' : 'default'} />
+          <Stat value={tonnageLabel(lifetime.tonnage)} label="Soulevés" />
+          <Stat value={String(lifetime.prs)} label="Records" tone={lifetime.prs ? 'pr' : 'default'} />
           <Stat
-            value={String(dashboard.streakWeeks)}
-            label="Semaines d'affilée"
+            value={`${dashboard.streakWeeks} sem.`}
+            label="Régularité"
             tone={dashboard.streakWeeks > 1 ? 'ok' : 'default'}
           />
         </View>
       </Card>
 
-      <SectionTitle right={<Badge label="BIENTÔT" />}>Partenaires</SectionTitle>
+      <SectionTitle>Objectif</SectionTitle>
+      <Card style={styles.goal}>
+        <View style={styles.flex}>
+          <Text style={type.h3}>Séances par semaine</Text>
+          <Text style={type.caption}>Ce que l'anneau de l'accueil te demande.</Text>
+        </View>
+        <View style={styles.stepper}>
+          <IconButton
+            name="remove"
+            accessibilityLabel="Une séance de moins"
+            color={c.text}
+            disabled={goal <= WEEKLY_GOAL_RANGE.min}
+            onPress={() => setWeeklyGoal(goal - 1)}
+            style={styles.stepBtn}
+          />
+          <Text style={styles.stepValue}>{goal}</Text>
+          <IconButton
+            name="add"
+            accessibilityLabel="Une séance de plus"
+            color={c.text}
+            disabled={goal >= WEEKLY_GOAL_RANGE.max}
+            onPress={() => setWeeklyGoal(goal + 1)}
+            style={styles.stepBtn}
+          />
+        </View>
+      </Card>
+
+      <SectionTitle right={<Badge label="Bientôt" tone="accent" />}>Partenaires</SectionTitle>
       <Card style={styles.social}>
         <View style={styles.socialIcon}>
           <Icon name="people" size={22} color={c.info} />
         </View>
         <View style={styles.flex}>
-          <Text style={styles.socialTitle}>Entraîne-toi à plusieurs</Text>
-          <Text style={styles.socialBody}>
+          <Text style={type.h3}>Entraîne-toi à plusieurs</Text>
+          <Text style={[type.small, { marginTop: 2 }]}>
             Partage tes séances avec ceux qui viennent avec toi à la salle et suis leur
             progression. Arrive avec la synchronisation.
           </Text>
@@ -80,6 +121,10 @@ export default function ProfileScreen() {
           )
         }
       />
+
+      {__DEV__ && lifetime.sessions === 0 ? (
+        <Button label="Charger des données de démo" variant="ghost" icon="flask-outline" onPress={seedDemoData} />
+      ) : null}
     </Screen>
   );
 }
@@ -88,21 +133,26 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
 
   identity: { flexDirection: 'row', alignItems: 'center', gap: space.lg, marginVertical: space.sm },
-  name: { color: c.text, fontSize: 22, fontWeight: '800' },
-  email: { color: c.textDim, fontSize: 14, marginTop: 2 },
-  since: { color: c.textFaint, fontSize: 12, marginTop: space.xs },
 
   statRow: { flexDirection: 'row', gap: space.md },
+
+  goal: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: c.surfaceAlt,
+    borderRadius: radius.pill,
+  },
+  stepBtn: { borderRadius: radius.pill },
+  stepValue: { ...font.display, color: c.text, fontSize: 26, minWidth: 28, textAlign: 'center' },
 
   social: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
   socialIcon: {
     width: 44,
     height: 44,
     borderRadius: radius.md,
-    backgroundColor: c.surfaceAlt,
+    backgroundColor: c.infoDim,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  socialTitle: { color: c.text, fontSize: 15, fontWeight: '700' },
-  socialBody: { color: c.textDim, fontSize: 14, lineHeight: 20, marginTop: 2 },
 });

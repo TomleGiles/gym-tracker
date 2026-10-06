@@ -1,23 +1,16 @@
 import * as Haptics from 'expo-haptics';
 import { useRef, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import type { ComponentPropsWithRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Rect } from 'react-native-svg';
 
-import { Avatar, Button, Field, Icon, IconButton, Input } from '../components/ui';
+import { Text, TextInput } from '../components/Text';
+import { Avatar, Button, Field, GradientFill, Icon, IconButton, Input } from '../components/ui';
 import { useQuery } from '../db/client';
 import { AuthError, MIN_PASSWORD_LENGTH, getLocalAccount, signIn, signUp } from '../db/queries/auth';
 import type { Account } from '../db/schema';
-import { c, radius, space } from '../lib/theme';
+import { c, radius, space, type } from '../lib/theme';
 
 /**
  * Inscription au premier lancement, connexion ensuite. Un seul compte par
@@ -57,7 +50,8 @@ function Brand() {
     <View style={styles.brand}>
       <ProgressBars />
       <View style={styles.logo}>
-        <Icon name="barbell" size={30} color={c.bg} />
+        <GradientFill borderRadius={radius.xl} />
+        <Icon name="barbell" size={30} color="#FFFFFF" />
       </View>
       <Text style={styles.appName}>Muscu Tracker</Text>
       <Text style={styles.tagline}>Note chaque série. Regarde-toi progresser.</Text>
@@ -252,7 +246,7 @@ function PasswordInput({ ref, ...props }: ComponentPropsWithRef<typeof Input>) {
 function ErrorBanner({ message }: { message: string }) {
   return (
     <View style={styles.error} accessibilityRole="alert">
-      <Icon name="alert-circle" size={18} color={c.accent} />
+      <Icon name="alert-circle" size={18} color={c.danger} />
       <Text style={styles.errorText}>{message}</Text>
     </View>
   );
@@ -313,27 +307,20 @@ const styles = StyleSheet.create({
     backgroundColor: c.accent,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
     borderWidth: 4,
     borderColor: c.bg,
   },
-  appName: {
-    color: c.text,
-    fontSize: 30,
-    fontWeight: '800',
-    letterSpacing: -0.6,
-    marginTop: space.md,
-  },
+  appName: { ...type.hero, marginTop: space.md },
   tagline: { color: c.textDim, fontSize: 15, marginTop: space.xs, textAlign: 'center' },
 
   formCard: {
     backgroundColor: c.surface,
     borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: c.border,
     padding: space.xl,
   },
   form: { gap: space.lg },
-  formTitle: { color: c.text, fontSize: 20, fontWeight: '800' },
+  formTitle: { ...type.h2 },
   formSubtitle: { color: c.textDim, fontSize: 14, marginTop: 2 },
   welcome: { flexDirection: 'row', alignItems: 'center', gap: space.md },
 
@@ -345,7 +332,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.sm,
-    backgroundColor: c.accentDim,
+    backgroundColor: c.dangerDim,
     borderRadius: radius.md,
     paddingHorizontal: space.md,
     paddingVertical: space.sm + 2,

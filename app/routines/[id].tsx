@@ -1,7 +1,8 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 
+import { Text } from '../../components/Text';
 import { BodyMap, highlightsFromIntensities } from '../../components/BodyMap/BodyMap';
 import { ExercisePicker } from '../../components/ExercisePicker';
 import {

@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { Text } from '../../components/Text';
 import { Badge, Chip, EmptyState, Icon, Input, Screen, Title } from '../../components/ui';
 import { useQuery } from '../../db/client';
 import { listExercises, listMuscles } from '../../db/queries/exercises';

@@ -1,8 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
 
+import { Text } from './Text';
 import { shortDate } from '../lib/format';
 import { c, font, radius, space } from '../lib/theme';
 

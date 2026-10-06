@@ -1,8 +1,9 @@
 import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
+import { Text } from './Text';
 import { mmss } from '../lib/format';
 import { c, font, radius, space } from '../lib/theme';
 import { useActiveSession } from '../stores/activeSession';

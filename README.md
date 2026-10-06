@@ -4,7 +4,8 @@ Suivi d'entraînement en salle. Une seule codebase pour iOS, Android et le web.
 Implémentation de [`spec-muscu-tracker.md`](./spec-muscu-tracker.md).
 
 Tout est local : SQLite est la source de vérité, aucun appel réseau n'est fait
-pendant une séance.
+pendant une séance. Un compte local protège l'accès ; le volet social (partager
+ses séances avec ses partenaires de salle) viendra avec la synchronisation.
 
 ## Démarrer
 
@@ -48,21 +49,23 @@ démarrable hors ligne.
 
 ## Ce qui est fait
 
-Les 8 premiers lots du §10 du spec. La sync serveur (lot 9) n'est pas
-implémentée, mais le schéma la prépare : UUID v7 côté client, `updated_at` /
-`deleted_at` sur chaque table utilisateur, et une table `sync_queue` alimentée
-par toutes les mutations.
+Les 8 premiers lots du §10 du spec, plus un compte local et une couche de
+rétention (voir plus bas). La sync serveur (lot 9) n'est pas implémentée, mais
+le schéma la prépare : UUID v7 côté client, `updated_at` / `deleted_at` sur
+chaque table utilisateur, et une table `sync_queue` alimentée par toutes les
+mutations.
 
 | Écran | Route |
 |---|---|
 | Connexion / création de compte | `/login` |
-| Profil, déconnexion | `/profile` |
-| Accueil, reprise de séance, couverture musculaire | `/` |
-| Catalogue de séances | `/routines`, `/routines/new`, `/routines/[id]` |
+| Accueil : prochaine séance, objectif de la semaine, records récents | `/` |
+| Catalogue de séances, programmes de départ | `/routines`, `/routines/new`, `/routines/[id]` |
 | Bibliothèque (120 exercices, 27 muscles) | `/exercises`, `/exercises/[id]` |
-| Historique, export JSON | `/history`, `/history/[id]` |
+| Progrès : historique, export JSON | `/history`, `/history/[id]` |
 | Volume hebdo par muscle | `/history/volume` |
+| Profil : stats depuis le début, objectif hebdo, déconnexion | `/profile` |
 | **Mode séance** | `/session/[id]` |
+| Bilan de fin de séance | `/session/recap/[id]` |
 
 ## Compte
 
@@ -73,11 +76,67 @@ Toutes les routes sauf `/login` sont derrière un `Stack.Protected` dans
 jusqu'à la déconnexion explicite. Le mot de passe est haché (SHA-256 salé) ; il
 n'y a pas de récupération possible tant qu'il n'y a pas de serveur.
 
+## Rétention
+
+Ce qui donne une raison de revenir, toute la logique est dans
+`db/queries/engagement.ts` :
+
+- **Prochaine séance.** L'accueil met en avant le modèle fait il y a le plus
+  longtemps (ou jamais fait). Sur un split Push / Pull / Legs, c'est exactement
+  la rotation, sans avoir à déclarer de programme. À égalité, l'ordre de
+  création.
+- **Objectif de la semaine.** Un nombre de séances (3 par défaut, 1 à 7, réglable
+  dans le Profil, rangé dans `meta.weekly_goal`), un anneau qui se remplit et les
+  sept jours de lundi à dimanche, en heure locale. Plus le nombre de semaines
+  d'affilée avec au moins une séance.
+- **Records.** Un record = un exercice dont l'e1RM bat le meilleur d'avant,
+  **compté une fois par séance** et non à chaque série. Les records récents sont
+  affichés avec leur gain de 1RM estimé.
+- **Bilan de fin de séance.** « Terminer » ouvre `/session/recap/[id]` : records
+  battus, durée / séries / tonnage, progression de la semaine. La comparaison de
+  tonnage avec la dernière fois n'apparaît que si elle est positive, une séance
+  écourtée n'a pas à finir sur « −60 % ».
+- **Programmes de départ.** Un nouvel utilisateur choisit Push · Pull · Legs,
+  Haut · Bas ou Full body (`db/seed/programs.ts`) : un appui crée les modèles,
+  modifiables ensuite.
+
+## Design
+
+Thème sombre unique (`lib/theme.ts`) : la salle est mal éclairée, le contraste
+prime. Les règles :
+
+- **Une couleur, un sens.** Orange en dégradé pour l'action principale, or pour
+  les records, vert pour la régularité, rouge uniquement pour le destructif.
+- **La hiérarchie vient des fonds** (`bg` → `surface` → `surfaceAlt` →
+  `surfaceHigh`), pas des bordures.
+- **Deux polices**, chargées au démarrage par `expo-font` : Inter pour
+  l'interface, Barlow Condensed pour les chiffres et les noms de séance
+  (`type.hero`, `font.display`). En cas d'échec de chargement, l'app démarre
+  quand même avec la police système.
+- **Tous les textes passent par `components/Text.tsx`**, qui traduit
+  `fontWeight` vers la bonne famille Inter (« Inter_700Bold »). Sans ça, le
+  navigateur synthétise un faux gras par-dessus une police déjà grasse. Importer
+  `Text` / `TextInput` depuis ce fichier, pas depuis `react-native`.
+- Les dégradés et halos (`GradientFill`, `Glow`, `ProgressRing` dans
+  `components/ui.tsx`) sont en `react-native-svg`, déjà présent : pas de
+  dépendance de plus, même rendu partout.
+
+## Données de démo
+
+En développement, le Profil d'un compte sans séance propose « Charger des données
+de démo » (`db/seed/demo.ts`) : cinq semaines de Push / Pull / Legs avec une
+progression crédible, pour travailler l'UI sur des écrans remplis. Le bouton
+n'existe pas dans un build de production (`__DEV__`).
+
 ## Arborescence
 
 ```
 app/                    routes expo-router
 components/
+  ui.tsx                kit d'UI : Card, Button, Stat, Badge, ProgressRing…
+  Text.tsx              Text / TextInput avec la bonne famille de police
+  Progress.tsx          objectif de la semaine, carte de record
+  ProgramPicker.tsx     choix d'un programme de départ
   BodyMap/              body-front.svg, body-back.svg, extracteur, composant
   SetRow.tsx            la ligne de série
   NumPad.tsx            pavé numérique custom
@@ -86,9 +145,11 @@ components/
 db/
   schema.ts             Drizzle
   migrations/           générées
-  queries/              une fonction par cas d'usage
+  queries/              une fonction par cas d'usage (auth, engagement…)
   seed/exercises.json   le référentiel livré avec l'app
-lib/                    strength, volume, format, notifications, backup, theme
+  seed/programs.ts      programmes de départ
+  seed/demo.ts          données de démo (dev)
+lib/                    strength, volume, format, notifications, backup, theme, confirm
 stores/activeSession.ts état UI de la séance (Zustand)
 scripts/                génération du BodyMap, correctif expo-sqlite
 ```
@@ -141,10 +202,16 @@ le pool de handles OPFS.
 
 ## Limites connues
 
-- **Le natif n'a pas été exécuté.** Tout a été vérifié sur le build web (base,
-  séance, PR, historique, volume, export). Le code natif est le même à
-  l'exception d'`expo-notifications`, dont le chemin permission + notification
-  programmée demande un vrai appareil.
+- **Le natif n'a pas été exécuté.** Tout a été vérifié sur le build web, en
+  taille téléphone (connexion, programmes de départ, séance, PR, bilan,
+  historique, volume, export). Le code natif est le même à l'exception
+  d'`expo-notifications`, dont le chemin permission + notification programmée
+  demande un vrai appareil, et des polices, à vérifier sur Android.
+- **Un seul compte par appareil**, sans récupération du mot de passe tant qu'il
+  n'y a pas de serveur. Le mot de passe n'est demandé qu'après une déconnexion
+  volontaire.
+- **Le social n'existe pas encore** : l'encart « Partenaires » du Profil
+  l'annonce, il dépend de la sync.
 - **Support web d'expo-sqlite en alpha**, d'où le correctif ci-dessus.
 - Pas de superset dans l'UI : la colonne `superset_key` existe, l'écran de
   séance ne l'exploite pas encore.

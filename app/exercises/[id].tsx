@@ -1,6 +1,7 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 
+import { Text } from '../../components/Text';
 import { BodyMap, highlightsFromRoles } from '../../components/BodyMap/BodyMap';
 import { ProgressChart } from '../../components/ProgressChart';
 import { Badge, Card, Chip, EmptyState, Icon, Screen, SectionTitle, Stat } from '../../components/ui';
@@ -10,7 +11,7 @@ import { getExerciseProgress } from '../../db/queries/stats';
 import { EQUIPMENT_LABEL, plural, relativeDay, shortDate } from '../../lib/format';
 import { e1rm, fmtE1rm, fmtKg } from '../../lib/strength';
 import type { Trend } from '../../lib/strength';
-import { c, radius, space } from '../../lib/theme';
+import { c, font, radius, space } from '../../lib/theme';
 
 const TREND_UI: Record<Trend, { icon: 'trending-up' | 'remove' | 'trending-down'; color: string; label: string }> = {
   up: { icon: 'trending-up', color: c.ok, label: 'En progression' },
@@ -39,7 +40,6 @@ export default function ExerciseDetailScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: exercise.labelFr }} />
       <Screen scroll edges={[]}>
         <View style={styles.titleBlock}>
           <Text style={styles.title}>{exercise.labelFr}</Text>
@@ -108,9 +108,9 @@ export default function ExerciseDetailScreen() {
 
             <Card>
               <View style={styles.statRow}>
-                <Stat value={`${fmtKg(progress.prWeightKg)} kg`} label="Record de charge" tone="accent" />
-                <Stat value={fmtE1rm(progress.bestE1rm)} label="Meilleur 1RM est." />
-                <Stat value={`${Math.round(progress.prSetVolume)} kg`} label="Record de volume (1 série)" />
+                <Stat value={`${fmtKg(progress.prWeightKg)} kg`} label="Charge max" tone="pr" />
+                <Stat value={fmtE1rm(progress.bestE1rm)} label="1RM estimé" />
+                <Stat value={`${Math.round(progress.prSetVolume)} kg`} label="Volume max" />
               </View>
               {progress.bestSet ? (
                 <Text style={styles.bestSet}>
@@ -169,7 +169,7 @@ function MuscleLine({ label, items, strong }: { label: string; items: string[]; 
 
 const styles = StyleSheet.create({
   titleBlock: { gap: space.sm },
-  title: { color: c.text, fontSize: 24, fontWeight: '800', letterSpacing: -0.4 },
+  title: { ...font.display, color: c.text, fontSize: 36, lineHeight: 40 },
   tagRow: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' },
 
   bodyWrap: { alignItems: 'center' },

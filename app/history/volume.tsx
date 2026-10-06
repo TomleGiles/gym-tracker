@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { Text } from '../../components/Text';
 import { BodyMap, highlightsFromIntensities } from '../../components/BodyMap/BodyMap';
 import { VolumeBar } from '../../components/ProgressChart';
 import { Card, Chip, EmptyState, Screen, SectionTitle } from '../../components/ui';

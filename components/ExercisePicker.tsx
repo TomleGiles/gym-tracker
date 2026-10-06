@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Text } from './Text';
 import { useQuery } from '../db/client';
 import { listExercises, listMuscles } from '../db/queries/exercises';
 import type { Equipment } from '../db/schema';

@@ -1,11 +1,21 @@
+import { BarlowCondensed_700Bold } from '@expo-google-fonts/barlow-condensed';
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+} from '@expo-google-fonts/inter';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { Text } from '../components/Text';
 import { Loading } from '../components/ui';
 import { db, initDatabase, useQuery } from '../db/client';
 import { getSignedInAccount } from '../db/queries/auth';
@@ -17,6 +27,16 @@ import { c, space } from '../lib/theme';
 export default function RootLayout() {
   const [opened, setOpened] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  // Chargées en parallèle de la base. Un échec n'est pas bloquant : on retombe
+  // sur la police système plutôt que de priver quelqu'un de sa séance.
+  const [fontsLoaded, fontError] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+    BarlowCondensed_700Bold,
+  });
 
   useEffect(() => {
     configureNotifications();
@@ -30,7 +50,7 @@ export default function RootLayout() {
   }, []);
 
   if (error) return <Fatal error={error} />;
-  if (!opened) return <Booting label="Ouverture de la base…" />;
+  if (!opened || !(fontsLoaded || fontError)) return <Booting label="Ouverture de la base…" />;
 
   // `useMigrations` attaque la base dès son premier rendu : ce sous-arbre ne
   // doit donc être monté qu'une fois la connexion réellement ouverte.
@@ -95,10 +115,15 @@ function AppNavigator() {
               name="session/[id]"
               options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }}
             />
+            <Stack.Screen
+              name="session/recap/[id]"
+              options={{ headerShown: false, gestureEnabled: false, animation: 'fade_from_bottom' }}
+            />
+            {/* Ces écrans affichent leur propre grand titre : le header ne garde que le retour. */}
             <Stack.Screen name="exercises/[id]" options={{ title: '' }} />
             <Stack.Screen name="routines/new" options={{ title: 'Nouvelle séance', presentation: 'modal' }} />
             <Stack.Screen name="routines/[id]" options={{ title: 'Séance' }} />
-            <Stack.Screen name="history/[id]" options={{ title: 'Séance' }} />
+            <Stack.Screen name="history/[id]" options={{ title: '' }} />
             <Stack.Screen name="history/volume" options={{ title: 'Volume par muscle' }} />
           </Stack.Protected>
         </Stack>
@@ -135,7 +160,7 @@ function describe(error: unknown): string {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  headerTitle: { color: c.text, fontSize: 17, fontWeight: '700' },
+  headerTitle: { color: c.text, fontSize: 17, fontWeight: '600' },
   boot: { flex: 1, backgroundColor: c.bg },
   fatal: { flex: 1, backgroundColor: c.bg, padding: space.xl, justifyContent: 'center' },
   fatalTitle: { color: c.accent, fontSize: 17, fontWeight: '700', marginBottom: space.md },

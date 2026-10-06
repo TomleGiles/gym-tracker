@@ -1,9 +1,10 @@
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Text } from '../../components/Text';
 import { ExercisePicker } from '../../components/ExercisePicker';
 import { NumPad, formatFr, parseFr } from '../../components/NumPad';
 import type { NumPadRequest } from '../../components/NumPad';
@@ -83,7 +84,7 @@ export default function SessionScreen() {
       endSession(id);
       stopRest();
       resetSessionUi();
-      router.replace(`/history/${id}`);
+      router.replace(`/session/recap/${id}`);
     };
     if (totals.sets === 0) {
       confirmDialog(

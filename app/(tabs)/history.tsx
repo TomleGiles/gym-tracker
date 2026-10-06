@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
+import { Text } from '../../components/Text';
 import { Badge, Button, Card, EmptyState, Icon, Screen, Stat, Title } from '../../components/ui';
 import { useQuery } from '../../db/client';
 import { getDashboard, listSessions } from '../../db/queries/stats';
@@ -16,7 +17,7 @@ export default function HistoryScreen() {
   return (
     <Screen>
       <View style={styles.header}>
-        <Title>Historique</Title>
+        <Title>Progrès</Title>
         <Button label="Exporter" icon="download-outline" variant="secondary" onPress={exportBackup} />
       </View>
 
@@ -37,14 +38,16 @@ export default function HistoryScreen() {
                   <Stat
                     value={String(dashboard.prsThisMonth)}
                     label="Records (30 j)"
-                    tone={dashboard.prsThisMonth ? 'accent' : 'default'}
+                    tone={dashboard.prsThisMonth ? 'pr' : 'default'}
                   />
                 </View>
               </Card>
               <Pressable onPress={() => router.push('/history/volume')}>
                 {({ pressed }) => (
                   <Card style={[styles.volumeLink, pressed && { opacity: 0.7 }]}>
-                    <Icon name="body" size={20} color={c.accent} />
+                    <View style={styles.volumeIcon}>
+                      <Icon name="body" size={18} color={c.accent} />
+                    </View>
                     <Text style={styles.volumeLinkLabel}>Volume hebdo par muscle</Text>
                     <Icon name="chevron-forward" size={18} />
                   </Card>
@@ -70,7 +73,7 @@ export default function HistoryScreen() {
                 <Text style={styles.rowTitle} numberOfLines={1}>
                   {item.routineName}
                 </Text>
-                {item.prCount > 0 ? <Badge label={`${item.prCount} PR`} tone="pr" /> : null}
+                {item.prCount > 0 ? <Badge label={`${item.prCount} PR`} tone="pr" icon="trophy" /> : null}
                 {!item.endedAt ? <Badge label="en cours" tone="ok" /> : null}
               </View>
               <Text style={styles.rowDate}>{longDate(item.startedAt)}</Text>
@@ -103,20 +106,26 @@ const styles = StyleSheet.create({
   statRow: { flexDirection: 'row', gap: space.md },
   volumeLink: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md },
   volumeLinkLabel: { flex: 1, color: c.text, fontSize: 15, fontWeight: '600' },
+  volumeIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: c.accentDim,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
     backgroundColor: c.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: c.border,
+    borderRadius: radius.lg,
     padding: space.lg,
   },
   rowMain: { flex: 1, gap: 3 },
   rowTitleLine: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  rowTitle: { color: c.text, fontSize: 16, fontWeight: '700', flexShrink: 1 },
+  rowTitle: { ...font.display, color: c.text, fontSize: 24, lineHeight: 28, flexShrink: 1 },
   rowDate: { color: c.textDim, fontSize: 13, textTransform: 'capitalize' },
   rowMeta: { color: c.textFaint, fontSize: 12 },
 });

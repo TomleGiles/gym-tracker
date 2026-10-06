@@ -1,6 +1,7 @@
 import { memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Text } from './Text';
 import type { SetLog, SetType } from '../db/schema';
 import { fmtKg } from '../lib/strength';
 import { c, font, radius, space } from '../lib/theme';

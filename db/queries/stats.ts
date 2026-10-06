@@ -40,7 +40,8 @@ export function listSessions(limit = 100): SessionSummary[] {
       setCount: sql<number>`COUNT(CASE WHEN ${setLog.setType} <> 'warmup' THEN 1 END)`,
       tonnage: sql<number>`COALESCE(SUM(CASE WHEN ${setLog.setType} <> 'warmup'
         THEN ${setLog.weightKg} * ${setLog.reps} END), 0)`,
-      prCount: sql<number>`COUNT(CASE WHEN ${setLog.isPr} = 1 THEN 1 END)`,
+      // Un record = un exercice battu dans la séance, pas chaque série au-dessus.
+      prCount: sql<number>`COUNT(DISTINCT CASE WHEN ${setLog.isPr} = 1 THEN ${setLog.exerciseId} END)`,
       exerciseCount: sql<number>`COUNT(DISTINCT ${setLog.exerciseId})`,
     })
     .from(session)
@@ -279,7 +280,7 @@ export function getDashboard(): Dashboard {
     .get();
 
   const prs = db
-    .select({ n: sql<number>`COUNT(*)` })
+    .select({ n: sql<number>`COUNT(DISTINCT ${setLog.sessionId} || ${setLog.exerciseId})` })
     .from(setLog)
     .where(and(eq(setLog.isPr, true), gte(setLog.loggedAt, monthAgo), isNull(setLog.deletedAt)))
     .get();
@@ -325,7 +326,7 @@ export function getLifetimeStats(): LifetimeStats {
     .select({
       sessions: sql<number>`COUNT(DISTINCT ${session.id})`,
       tonnage: sql<number>`COALESCE(SUM(${setLog.weightKg} * ${setLog.reps}), 0)`,
-      prs: sql<number>`COALESCE(SUM(${setLog.isPr}), 0)`,
+      prs: sql<number>`COUNT(DISTINCT CASE WHEN ${setLog.isPr} = 1 THEN ${setLog.sessionId} || ${setLog.exerciseId} END)`,
     })
     .from(session)
     .leftJoin(

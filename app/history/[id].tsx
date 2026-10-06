@@ -1,6 +1,7 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Text } from '../../components/Text';
 import { BodyMap, highlightsFromIntensities } from '../../components/BodyMap/BodyMap';
 import { Badge, Card, EmptyState, Icon, Screen, SectionTitle, Stat } from '../../components/ui';
 import { useQuery } from '../../db/client';
@@ -50,7 +51,6 @@ export default function SessionHistoryScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: summary.routineName }} />
       <Screen scroll edges={[]}>
         <View style={styles.head}>
           <Text style={styles.title}>{summary.routineName}</Text>
@@ -71,7 +71,7 @@ export default function SessionHistoryScreen() {
             <Stat
               value={String(summary.prCount)}
               label="Records"
-              tone={summary.prCount ? 'accent' : 'default'}
+              tone={summary.prCount ? 'pr' : 'default'}
             />
           </View>
           <View style={styles.bodyWrap}>
@@ -129,7 +129,7 @@ export default function SessionHistoryScreen() {
 
 const styles = StyleSheet.create({
   head: { gap: space.xs },
-  title: { color: c.text, fontSize: 24, fontWeight: '800' },
+  title: { ...font.display, color: c.text, fontSize: 40, lineHeight: 44 },
   date: { color: c.textDim, fontSize: 14, textTransform: 'capitalize' },
 
   statRow: { flexDirection: 'row', gap: space.md },

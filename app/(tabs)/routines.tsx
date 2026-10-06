@@ -1,15 +1,17 @@
 import { useRouter } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
+import { Text } from '../../components/Text';
 import { BodyMap, highlightsFromIntensities } from '../../components/BodyMap/BodyMap';
-import { Button, EmptyState, Icon, Screen, Title } from '../../components/ui';
+import { ProgramPicker } from '../../components/ProgramPicker';
+import { Button, GradientFill, Icon, Screen, Title } from '../../components/ui';
 import { useQuery } from '../../db/client';
 import { musclesOf } from '../../db/queries/exercises';
 import { getRoutineItems, listRoutines } from '../../db/queries/routines';
 import { startSession } from '../../db/queries/sessions';
 import type { Muscle } from '../../db/schema';
 import { plural } from '../../lib/format';
-import { c, radius, space } from '../../lib/theme';
+import { HIT, c, radius, space, type } from '../../lib/theme';
 import { ROLE_WEIGHT } from '../../lib/volume';
 import { useActiveSession } from '../../stores/activeSession';
 
@@ -22,23 +24,14 @@ export default function RoutinesScreen() {
     <Screen>
       <View style={styles.header}>
         <Title>Séances</Title>
-        <Button label="Nouvelle" icon="add" onPress={() => router.push('/routines/new')} />
+        <Button label="Nouvelle" icon="add" variant="secondary" onPress={() => router.push('/routines/new')} />
       </View>
 
       <FlatList
         data={routines}
         keyExtractor={(r) => r.id}
         contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <EmptyState
-            icon="albums"
-            title="Aucun modèle de séance"
-            body="Crée « Push 1 », « Pull 1 », « Legs 1 »… Chaque modèle est une liste ordonnée d'exercices avec des séries et des reps cibles."
-            action={
-              <Button label="Créer ma première séance" icon="add" onPress={() => router.push('/routines/new')} />
-            }
-          />
-        }
+        ListEmptyComponent={<ProgramPicker />}
         renderItem={({ item }) => (
           <RoutineCard
             id={item.id}
@@ -95,25 +88,49 @@ function RoutineCard({
     );
   }, [id]);
 
+  const exercises = useQuery(() => getRoutineItems(id).map((i) => i.exercise.labelFr), [id]);
+  const tint = color ?? c.textFaint;
+
   return (
+    // Deux zones sœurs plutôt qu'une carte cliquable contenant le bouton lecture :
+    // un bouton dans un bouton est invalide en HTML et ambigu au toucher.
     <View style={styles.card}>
-      <Pressable onPress={onOpen} style={({ pressed }) => [styles.cardMain, pressed && { opacity: 0.7 }]}>
+      <View style={[styles.stripe, { backgroundColor: tint }]} />
+      <Pressable
+        onPress={onOpen}
+        accessibilityRole="button"
+        accessibilityLabel={`Modifier ${name}`}
+        style={({ pressed }) => [styles.cardMain, pressed && { opacity: 0.7 }]}
+      >
         <View style={styles.cardText}>
-          <View style={styles.nameRow}>
-            <View style={[styles.dot, { backgroundColor: color ?? c.textFaint }]} />
-            <Text style={styles.name} numberOfLines={1}>
-              {name}
-            </Text>
-          </View>
+          <Text style={styles.name} numberOfLines={1}>
+            {name}
+          </Text>
           <Text style={styles.meta}>{plural(itemCount, 'exercice')}</Text>
-          <View style={styles.editHint}>
-            <Text style={styles.editHintText}>Modifier</Text>
-            <Icon name="chevron-forward" size={13} color={c.textFaint} />
-          </View>
+          {exercises.length ? (
+            <Text style={styles.preview} numberOfLines={2}>
+              {exercises.join(' · ')}
+            </Text>
+          ) : null}
         </View>
-        <BodyMap highlights={highlights} view="both" size={62} />
+        <BodyMap highlights={highlights} view="both" size={58} />
       </Pressable>
-      <Button label="Lancer" icon="play" onPress={onStart} />
+      <View style={styles.cardFoot}>
+        <Pressable onPress={onOpen} hitSlop={8} style={styles.editHint}>
+          <Icon name="create-outline" size={15} color={c.textFaint} />
+          <Text style={styles.editHintText}>Modifier</Text>
+        </Pressable>
+        <Pressable
+          onPress={onStart}
+          accessibilityRole="button"
+          accessibilityLabel={`Lancer ${name}`}
+          hitSlop={6}
+          style={({ pressed }) => [styles.play, pressed && { transform: [{ scale: 0.94 }] }]}
+        >
+          <GradientFill borderRadius={26} />
+          <Icon name="play" size={22} color="#FFFFFF" />
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -132,17 +149,26 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: c.surface,
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: c.border,
     padding: space.lg,
+    paddingLeft: space.lg + 6,
     gap: space.md,
+    overflow: 'hidden',
   },
+  stripe: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 },
   cardMain: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  cardText: { flex: 1, gap: space.xs },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  dot: { width: 10, height: 10, borderRadius: 5 },
-  name: { color: c.text, fontSize: 18, fontWeight: '700', flexShrink: 1 },
-  meta: { color: c.textDim, fontSize: 13 },
-  editHint: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: space.xs },
-  editHintText: { color: c.textFaint, fontSize: 12 },
+  cardText: { flex: 1, gap: 2 },
+  name: { ...type.hero, fontSize: 34, lineHeight: 38 },
+  meta: { ...type.small },
+  preview: { ...type.caption, lineHeight: 17, marginTop: space.xs },
+  cardFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  editHint: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: HIT },
+  editHintText: { color: c.textFaint, fontSize: 13, fontWeight: '600' },
+  play: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
 });
