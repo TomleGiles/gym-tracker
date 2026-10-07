@@ -5,6 +5,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text } from '../../components/Text';
+import { CardioSection } from '../../components/Cardio';
 import { ExercisePicker } from '../../components/ExercisePicker';
 import { NumPad, formatFr, parseFr } from '../../components/NumPad';
 import type { NumPadRequest } from '../../components/NumPad';
@@ -12,6 +13,7 @@ import { RestTimer } from '../../components/RestTimer';
 import { SetRow, setRowStyles } from '../../components/SetRow';
 import { Badge, Button, EmptyState, Icon, IconButton, Loading, ProgressRing } from '../../components/ui';
 import { useQuery } from '../../db/client';
+import { getSessionCardio } from '../../db/queries/cardio';
 import {
   addExerciseToSession,
   deleteSet,
@@ -24,6 +26,7 @@ import {
   updateSet,
 } from '../../db/queries/sessions';
 import type { ExerciseInSession, SetLog } from '../../db/schema';
+import { cardioDuration } from '../../lib/cardio';
 import { confirmDialog } from '../../lib/confirm';
 import { clockTime, duration, plural, relativeDay, tonnageLabel } from '../../lib/format';
 import { fmtE1rm, fmtKg, e1rm, tonnage, weightStep } from '../../lib/strength';
@@ -38,6 +41,8 @@ export default function SessionScreen() {
 
   const session = useQuery(() => getSession(id), [id]);
   const view = useQuery(() => getSessionView(id), [id]);
+  const cardio = useQuery(() => getSessionCardio(id), [id]);
+  const cardioSec = cardio.reduce((sum, e) => sum + e.durationSec, 0);
 
   const expandedSlotId = useActiveSession((s) => s.expandedSlotId);
   const expand = useActiveSession((s) => s.expand);
@@ -88,7 +93,8 @@ export default function SessionScreen() {
       resetSessionUi();
       router.replace(`/session/recap/${id}`);
     };
-    if (totals.sets === 0) {
+    // Une séance 100 % cardio est une vraie séance : seule une séance vide part.
+    if (totals.sets === 0 && cardio.length === 0) {
       confirmDialog(
         'Terminer sans aucune série ?',
         'La séance sera supprimée.',
@@ -103,7 +109,7 @@ export default function SessionScreen() {
       return;
     }
     close();
-  }, [id, router, stopRest, resetSessionUi, totals.sets]);
+  }, [id, router, stopRest, resetSessionUi, totals.sets, cardio.length]);
 
   const targetSets = view.reduce((sum, entry) => sum + entry.targetSets, 0);
   const completedTargetSets = view.reduce((sum, entry) => sum + Math.min(entry.today.length, entry.targetSets), 0);
@@ -149,6 +155,7 @@ export default function SessionScreen() {
             <Badge label={`${totals.done}/${view.length} exercices`} />
             <Badge label={`${plural(totals.sets, 'série')} validée${totals.sets === 1 ? '' : 's'}`} tone="accent" />
             <Badge label={tonnageLabel(totals.tonnage)} />
+            {cardioSec > 0 ? <Badge label={`${cardioDuration(cardioSec)} de cardio`} icon="heart-outline" /> : null}
           </View>
           <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${Math.min(100, completion * 100)}%` }]} /></View>
         </View>
@@ -158,7 +165,7 @@ export default function SessionScreen() {
           <EmptyState
             icon="barbell"
             title="Séance libre"
-            body="Ajoute ton premier exercice — tu peux en ajouter d'autres au fil de la séance."
+            body="Ajoute ton premier exercice — tu peux en ajouter d'autres au fil de la séance. Pas de muscu aujourd'hui ? Le cardio est juste en dessous."
             action={<Button label="Ajouter un exercice" icon="add" onPress={() => setPicking(true)} />}
           />
         ) : (
@@ -184,6 +191,8 @@ export default function SessionScreen() {
             onPress={() => setPicking(true)}
           />
         ) : null}
+
+        <CardioSection sessionId={id} />
 
         <Pressable accessibilityRole="button" onPress={() => confirmDiscard(id, () => {
           discardSession(id);
@@ -525,7 +534,7 @@ function prefill(setIndex: number, entry: ExerciseInSession): Draft {
 const confirmDiscard = (_id: string, onConfirm: () => void) =>
   confirmDialog(
     'Abandonner la séance ?',
-    'Toutes les séries enregistrées seront supprimées.',
+    'Toutes les séries et le cardio enregistrés seront supprimés.',
     'Abandonner',
     onConfirm,
   );

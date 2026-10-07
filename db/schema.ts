@@ -41,6 +41,24 @@ export const exerciseMuscle = sqliteTable(
   (t) => [primaryKey({ columns: [t.exerciseId, t.muscleId] })],
 );
 
+/**
+ * Activités cardio (Lot 10). Référentiel à part plutôt que des `exercise` :
+ * le cardio n'a ni séries, ni muscles, ni 1RM, et le mêler aux exercices de
+ * muscu aurait obligé chaque requête de force à l'exclure.
+ */
+export const cardioActivity = sqliteTable('cardio_activity', {
+  id: text('id').primaryKey(), // 'treadmill'
+  labelFr: text('label_fr').notNull(),
+  setting: text('setting').$type<CardioSetting>().notNull(),
+  /** Nom Ionicons. */
+  icon: text('icon').notNull(),
+  /** Comment exprimer l'allure. NULL = pas de distance (stepper, corde). */
+  pace: text('pace').$type<CardioPace>(),
+  /** « Inclinaison (%) », « Résistance »… NULL = pas de réglage. */
+  levelLabel: text('level_label'),
+  position: integer('position').notNull(),
+});
+
 /* ------------------------------------------------------------------ *
  * Catalogue de séances — données utilisateur.
  * PK = UUID v7 côté client, updated_at + deleted_at pour la sync V2.
@@ -164,6 +182,35 @@ export const setLog = sqliteTable(
   ],
 );
 
+/**
+ * La partie cardio d'une séance (Lot 10), après la muscu. Une ligne = une
+ * activité faite d'une traite : pas de séries, pas de repos.
+ */
+export const cardioLog = sqliteTable(
+  'cardio_log',
+  {
+    id: text('id').primaryKey(),
+    sessionId: text('session_id')
+      .notNull()
+      .references(() => session.id, { onDelete: 'cascade' }),
+    activityId: text('activity_id')
+      .notNull()
+      .references(() => cardioActivity.id),
+    position: integer('position').notNull(),
+    durationSec: integer('duration_sec').notNull(),
+    distanceM: real('distance_m'),
+    calories: integer('calories'),
+    level: real('level'),
+    loggedAt: text('logged_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+    deletedAt: text('deleted_at'),
+  },
+  (t) => [
+    index('idx_cardio_log_session').on(t.sessionId),
+    index('idx_cardio_log_activity').on(t.activityId, t.loggedAt),
+  ],
+);
+
 /* ------------------------------------------------------------------ *
  * Stats matérialisées — §11 « ne pas recalculer sur 2 ans d'historique ».
  * Rafraîchi en fin de séance (et à la validation d'un PR).
@@ -235,6 +282,9 @@ export type Mechanic = 'compound' | 'isolation';
 export type MuscleRole = 'primary' | 'secondary' | 'stabilizer';
 export type SetType = 'warmup' | 'working' | 'dropset' | 'failure';
 export type SyncOp = 'insert' | 'update' | 'delete';
+export type CardioSetting = 'gym' | 'outdoor';
+/** min/km (course), min/500 m (rameur), km/h (vélo). */
+export type CardioPace = 'per_km' | 'per_500m' | 'speed';
 
 export type Muscle = typeof muscle.$inferSelect;
 export type Exercise = typeof exercise.$inferSelect;
@@ -245,6 +295,8 @@ export type Session = typeof session.$inferSelect;
 export type SessionExercise = typeof sessionExercise.$inferSelect;
 export type SetLog = typeof setLog.$inferSelect;
 export type ExerciseStats = typeof exerciseStats.$inferSelect;
+export type CardioActivity = typeof cardioActivity.$inferSelect;
+export type CardioLog = typeof cardioLog.$inferSelect;
 export type User = typeof user.$inferSelect;
 /** Ce que l'UI connaît du compte : jamais le hash. */
 export type Account = Pick<User, 'id' | 'email' | 'displayName' | 'createdAt'>;

@@ -1,8 +1,9 @@
 import { eq, inArray, notInArray, sql } from 'drizzle-orm';
 
 import { db } from '../client';
-import { exercise, exerciseMuscle, meta, muscle } from '../schema';
+import { cardioActivity, exercise, exerciseMuscle, meta, muscle } from '../schema';
 import type { Equipment, Mechanic, MuscleRole, Region } from '../schema';
+import { CARDIO_ACTIVITIES } from './cardio';
 import raw from './exercises.json';
 
 type SeedMuscle = {
@@ -109,6 +110,11 @@ export function runSeed(): { applied: boolean; version: number } {
     for (let i = 0; i < links.length; i += 200) {
       tx.insert(exerciseMuscle).values(links.slice(i, i + 200)).run();
     }
+
+    CARDIO_ACTIVITIES.forEach((a, position) => {
+      const row = { ...a, position };
+      tx.insert(cardioActivity).values(row).onConflictDoUpdate({ target: cardioActivity.id, set: row }).run();
+    });
 
     tx.insert(meta)
       .values({ key: 'seed_version', value: String(SEED_VERSION) })

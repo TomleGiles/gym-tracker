@@ -5,7 +5,7 @@ SQLite local via Drizzle. Une seule codebase pour iOS, Android et le web.
 
 ## Specs — à lire avant toute fonctionnalité
 
-- [`spec-muscu-tracker.md`](./spec-muscu-tracker.md) — spec principal : modèle de données, mode séance, calculs, lots 0 à 9. Les lots 0 à 8 sont faits.
+- [`spec-muscu-tracker.md`](./spec-muscu-tracker.md) — spec principal : modèle de données, mode séance, calculs, lots 0 à 10. Les lots 0 à 8 et le lot 10 (cardio) sont faits.
 - [`spec-social.md`](./spec-social.md) — volet social : compte en ligne et sync (Supabase), amis (lien, QR, pseudo), partage de séances, fil, séances programmées, direct, programmes publics. Lots S0 à S6.
 - [`README.md`](./README.md) — état réel de l'implémentation, écarts par rapport au spec et pourquoi, limites connues.
 

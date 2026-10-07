@@ -43,13 +43,13 @@ export default function LoginScreen() {
                 <TrainingArtwork />
               </View>
               <View style={styles.heroCopy}>
-                <Text style={styles.eyebrow}>L'ENTRAÎNEMENT. EN MIEUX.</Text>
+                <Text style={styles.eyebrow}>TON SUIVI D'ENTRAÎNEMENT.</Text>
                 <Text style={[styles.headline, wide && styles.headlineWide]}>
                   CHAQUE{'\n'}SÉRIE{'\n'}<Text style={styles.headlineAccent}>COMPTE.</Text>
                 </Text>
                 <Text style={styles.tagline}>Ton effort mérite plus qu'un souvenir.{wide ? '\n' : ' '}Fais-en ta prochaine référence.</Text>
               </View>
-              <View style={styles.heroBaseline}><View style={styles.baselineMark} /><Text style={styles.baselineText}>CONSTRUIS TA PROGRESSION.</Text></View>
+              <View style={styles.heroBaseline}><View style={styles.baselineMark} /><Text style={styles.baselineText}>SUIS TA PROGRESSION.</Text></View>
             </View>
             <View style={styles.features}>
               <Feature icon="barbell-outline" label="Chaque série" />
@@ -156,7 +156,7 @@ function SignUpForm() {
       {error ? <ErrorBanner message={error} /> : null}
 
       <Button
-        label={busy ? 'Création…' : 'Commencer avec ATLAS'}
+        label={busy ? 'Création…' : 'Commencer avec Trakr'}
         icon="arrow-forward"
         size="lg"
         disabled={busy || !displayName.trim() || !email.trim() || !password}
@@ -312,7 +312,8 @@ const styles = StyleSheet.create({
   eyebrow: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, color: c.textFaint },
   headline: { ...font.display, fontSize: 65, lineHeight: 60, color: c.text, letterSpacing: -0.5 },
   headlineWide: { fontSize: 104, lineHeight: 93, marginTop: 14 },
-  headlineAccent: { color: c.accent },
+  // `Text` impose Inter par défaut, même imbriqué : on répète la police display.
+  headlineAccent: { ...font.display, color: c.accent },
   tagline: { color: c.textDim, fontSize: 13, lineHeight: 21, maxWidth: 250, marginTop: 2 },
   heroBaseline: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 24 },
   baselineMark: { width: 28, height: 2, backgroundColor: c.accent },

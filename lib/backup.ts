@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 
 import { db } from '../db/client';
 import {
+  cardioLog,
   exercise,
   exerciseMuscle,
   routine,
@@ -42,6 +43,7 @@ export function buildBackup(): string {
       sessions: db.select().from(session).all(),
       sessionExercises: db.select().from(sessionExercise).all(),
       setLogs: db.select().from(setLog).all(),
+      cardioLogs: db.select().from(cardioLog).all(),
     },
     null,
     2,

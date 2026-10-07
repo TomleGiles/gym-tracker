@@ -2,15 +2,18 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { BodyMap, highlightsFromRoles } from '../../components/BodyMap/BodyMap';
+import { CardioLibrary } from '../../components/Cardio';
 import { Text } from '../../components/Text';
 import { Badge, Button, Chip, EmptyState, Icon, Input, PageHeader, Screen } from '../../components/ui';
 import type { IconName } from '../../components/ui';
 import { useQuery } from '../../db/client';
+import { listCardioActivities } from '../../db/queries/cardio';
 import { listExercises, listMuscles } from '../../db/queries/exercises';
 import type { ExerciseListItem } from '../../db/queries/exercises';
-import type { Equipment } from '../../db/schema';
+import type { Equipment, Muscle } from '../../db/schema';
 import { EQUIPMENT_LABEL, REGION_LABEL } from '../../lib/format';
-import { c, radius, space, type } from '../../lib/theme';
+import { c, font, radius, space, type } from '../../lib/theme';
 
 const EQUIPMENTS: Equipment[] = ['barbell', 'dumbbell', 'machine', 'cable', 'bodyweight'];
 const REGIONS = ['chest', 'back', 'shoulders', 'arms', 'legs', 'core'] as const;
@@ -26,37 +29,65 @@ export default function ExercisesScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const columns = width >= 1500 ? 3 : width >= 1060 ? 2 : 1;
+  const [mode, setMode] = useState<'strength' | 'cardio'>('strength');
+  const cardioCount = useQuery(() => listCardioActivities().length, []);
   const [search, setSearch] = useState('');
   const [region, setRegion] = useState<string | null>(null);
+  // Muscle touché sur le bonhomme. Exclusif avec `region` : le dernier choix l'emporte.
+  const [muscleId, setMuscleId] = useState<string | null>(null);
   const [equipment, setEquipment] = useState<Equipment | null>(null);
   const [mechanic, setMechanic] = useState<'compound' | 'isolation' | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const muscles = useQuery(() => listMuscles(), []);
   const catalog = useQuery(() => listExercises(), []);
   const muscleIds = useMemo(
-    () => (region ? muscles.filter((m) => m.region === region).map((m) => m.id) : undefined),
-    [region, muscles],
+    () => (muscleId ? [muscleId] : region ? muscles.filter((m) => m.region === region).map((m) => m.id) : undefined),
+    [muscleId, region, muscles],
   );
+  const muscleBySvgId = useMemo(() => {
+    const out = new Map<string, Muscle>();
+    for (const m of muscles) for (const id of [m.svgFrontId, m.svgBackId]) if (id) out.set(id, m);
+    return out;
+  }, [muscles]);
+  // Le bonhomme reflète le filtre courant, qu'il vienne d'un muscle touché ou d'une zone.
+  const highlights = useMemo(
+    () => highlightsFromRoles(muscles.filter((m) => muscleIds?.includes(m.id)).map((m) => ({ muscle: m, role: 'primary' as const }))),
+    [muscles, muscleIds],
+  );
+  const selectedMuscle = muscleId ? muscles.find((m) => m.id === muscleId) : undefined;
   const matches = useQuery(
     () => listExercises({ search, muscleIds, equipment: equipment ? [equipment] : undefined }),
     [search, muscleIds, equipment],
   );
   const exercises = useMemo(() => mechanic ? matches.filter((e) => e.mechanic === mechanic) : matches, [matches, mechanic]);
   const activeCount = Number(!!equipment) + Number(!!mechanic);
-  const hasFilters = !!(search || region || equipment || mechanic);
+  const hasFilters = !!(search || region || muscleId || equipment || mechanic);
 
   function resetFilters() {
     setSearch('');
     setRegion(null);
+    setMuscleId(null);
     setEquipment(null);
     setMechanic(null);
+  }
+
+  function pickMuscle(svgId: string) {
+    const m = muscleBySvgId.get(svgId);
+    if (!m) return;
+    setRegion(null);
+    setMuscleId((current) => (current === m.id ? null : m.id));
+  }
+
+  function pickRegion(next: string | null) {
+    setMuscleId(null);
+    setRegion(next);
   }
 
   return (
     <Screen>
       <FlatList
         key={columns}
-        data={exercises}
+        data={mode === 'strength' ? exercises : []}
         numColumns={columns}
         keyExtractor={(e) => e.id}
         contentContainerStyle={[styles.list, width >= 900 && styles.listDesktop]}
@@ -69,8 +100,15 @@ export default function ExercisesScreen() {
               eyebrow="LA BIBLIOTHÈQUE"
               title="Trouve ton mouvement."
               subtitle="Explore les exercices. Comprends les muscles. Affine chaque séance."
-              action={<Badge label={`${catalog.length} EXERCICES`} tone="accent" icon="barbell-outline" />}
+              action={mode === 'strength'
+                ? <Badge label={`${catalog.length} EXERCICES`} tone="accent" icon="barbell-outline" />
+                : <Badge label={`${cardioCount} ACTIVITÉS`} tone="accent" icon="heart-outline" />}
             />
+            <View style={styles.modeRow}>
+              <Chip label="Musculation" active={mode === 'strength'} onPress={() => setMode('strength')} />
+              <Chip label="Cardio" active={mode === 'cardio'} onPress={() => setMode('cardio')} />
+            </View>
+            {mode === 'cardio' ? <CardioLibrary columns={columns} /> : <>
             <View style={styles.searchRow}>
               <View style={styles.search}>
                 <View style={styles.searchIcon}><Icon name="search-outline" size={21} color={c.textDim} /></View>
@@ -93,9 +131,17 @@ export default function ExercisesScreen() {
                 onPress={() => setShowFilters((open) => !open)}
               />
             </View>
+            <MuscleMapCard
+              highlights={highlights}
+              title={selectedMuscle?.labelFr ?? (region ? REGION_LABEL[region] : null)}
+              count={exercises.length}
+              wide={width >= 700}
+              onMusclePress={pickMuscle}
+              onClear={() => pickRegion(null)}
+            />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow} style={styles.filterScroll}>
-              <Chip label="Tout le corps" active={!region} onPress={() => setRegion(null)} />
-              {REGIONS.map((r) => <Chip key={r} label={REGION_LABEL[r]} active={region === r} onPress={() => setRegion(region === r ? null : r)} />)}
+              <Chip label="Tout le corps" active={!region && !muscleId} onPress={() => pickRegion(null)} />
+              {REGIONS.map((r) => <Chip key={r} label={REGION_LABEL[r]} active={region === r} onPress={() => pickRegion(region === r ? null : r)} />)}
             </ScrollView>
             {showFilters && (
               <View style={styles.filterPanel}>
@@ -126,16 +172,17 @@ export default function ExercisesScreen() {
                 <Pressable accessibilityRole="button" onPress={resetFilters} style={styles.reset}><Text style={styles.resetText}>Tout effacer</Text><Icon name="close" size={14} color={c.textDim} /></Pressable>
               ) : <Text style={styles.sort}>A — Z</Text>}
             </View>
+            </>}
           </View>
         }
-        ListEmptyComponent={
+        ListEmptyComponent={mode === 'cardio' ? null : (
           <EmptyState
             icon="search-outline"
             title="On change de piste ?"
             body="Aucun exercice ne correspond à cette combinaison. Retire un filtre ou essaie un autre mot."
             action={<Button label="Réinitialiser les filtres" icon="refresh-outline" onPress={resetFilters} />}
           />
-        }
+        )}
         renderItem={({ item }) => (
           <View style={[styles.item, columns > 1 && { maxWidth: `${100 / columns}%` }]}>
             <ExerciseCard item={item} onPress={() => router.push(`/exercises/${item.id}`)} />
@@ -143,6 +190,36 @@ export default function ExercisesScreen() {
         )}
       />
     </Screen>
+  );
+}
+
+function MuscleMapCard({ highlights, title, count, wide, onMusclePress, onClear }: {
+  highlights: ReturnType<typeof highlightsFromRoles>;
+  /** Muscle ou zone sélectionné, `null` quand rien ne filtre. */
+  title: string | null;
+  count: number;
+  wide: boolean;
+  onMusclePress: (svgId: string) => void;
+  onClear: () => void;
+}) {
+  return (
+    <View style={[styles.anatomyCard, wide && styles.anatomyCardWide]}>
+      <BodyMap highlights={highlights} view="both" size={wide ? 120 : 100} onMusclePress={onMusclePress} />
+      <View style={[styles.anatomyText, wide && { alignItems: 'flex-start' }]}>
+        <Text style={type.overline}>CARTE DES MUSCLES</Text>
+        <Text style={styles.anatomyTitle}>{title ?? 'Touche un muscle.'}</Text>
+        <Text style={[type.small, !wide && { textAlign: 'center' }]}>
+          {title
+            ? `${count} exercice${count > 1 ? 's le travaillent' : ' le travaille'} en principal.`
+            : 'Face et dos : touche une zone pour voir les exercices qui la travaillent.'}
+        </Text>
+        {title ? (
+          <Pressable accessibilityRole="button" onPress={onClear} style={styles.reset}>
+            <Text style={styles.resetText}>Voir tout le corps</Text><Icon name="close" size={14} color={c.textDim} />
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
   );
 }
 
@@ -174,11 +251,16 @@ const styles = StyleSheet.create({
   listDesktop: { padding: 32 },
   columns: { gap: space.md },
   header: { gap: 20, marginBottom: 2 },
+  modeRow: { flexDirection: 'row', gap: space.sm },
   searchRow: { flexDirection: 'row', gap: 10, alignItems: 'center', marginTop: 6 },
   search: { flex: 1, minWidth: 0, position: 'relative' },
   searchInput: { paddingLeft: 44, paddingRight: 38, height: 50 },
   searchIcon: { position: 'absolute', left: 15, top: 15, zIndex: 1, pointerEvents: 'none' },
   clear: { position: 'absolute', right: 5, top: 3, width: 34, height: 44, alignItems: 'center', justifyContent: 'center' },
+  anatomyCard: { backgroundColor: c.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: c.border, padding: 20, gap: 16, alignItems: 'center' },
+  anatomyCardWide: { flexDirection: 'row', gap: 32, paddingHorizontal: 32 },
+  anatomyText: { flex: 1, gap: 8, alignItems: 'center', minWidth: 0 },
+  anatomyTitle: { ...font.display, fontSize: 30, lineHeight: 32, color: c.text },
   filterScroll: { flexGrow: 0, flexShrink: 0 },
   filterRow: { gap: space.sm, alignItems: 'center', paddingVertical: 2 },
   filterPanel: { padding: 20, backgroundColor: c.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: c.border, gap: 20 },

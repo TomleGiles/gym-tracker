@@ -1,7 +1,7 @@
 {
-  "name": "ATLAS — Chaque série compte",
-  "short_name": "ATLAS",
-  "description": "Tes séances, tes records, ta progression. Ton espace d'entraînement personnel, même hors ligne.",
+  "name": "Trakr — Chaque série compte",
+  "short_name": "Trakr",
+  "description": "Tes séances, tes records, ta progression. Ton suivi d'entraînement personnel, même hors ligne.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

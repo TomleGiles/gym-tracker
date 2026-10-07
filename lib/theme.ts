@@ -4,7 +4,7 @@
  *
  * La hiérarchie vient des surfaces (bg → surface → surfaceAlt → surfaceHigh),
  * pas des bordures : une carte n'a de contour que si elle doit se détacher.
- * L'orange est réservé à l'action principale ; l'or aux records ; le vert à la
+ * L'ivoire est réservé à l'action principale ; l'or aux records ; le vert à la
  * régularité (objectif, série de semaines). Une couleur = un sens.
  */
 export const c = {
@@ -19,12 +19,12 @@ export const c = {
   textDim: '#A9B2BB',
   textFaint: '#87929E',
 
-  accent: '#D7FC70',
-  onAccent: '#17200B',
+  accent: '#ECE4D4',
+  onAccent: '#1A1712',
   /** Fond teinté derrière un élément accent (badge, avatar). */
-  accentDim: '#28321B',
+  accentDim: '#2A2721',
   /** Dégradé des appels à l'action principaux et des héros. */
-  accentGradient: ['#D7FC70', '#BEEB52'] as const,
+  accentGradient: ['#F4EEE3', '#E2D8C6'] as const,
 
   pr: '#FFC542',
   prDim: '#3A2C0C',
@@ -36,15 +36,19 @@ export const c = {
   danger: '#F43F5E',
   dangerDim: '#3E1119',
 
-  /** Palette du BodyMap (§4 du spec). */
+  /**
+   * Palette du BodyMap (§4 du spec). Indépendante de l'accent : le dégradé
+   * d'intensité (BodyMap.tsx) passe par ces trois couleurs et doit changer de
+   * teinte pour se lire comme une chaleur. Braise, puis chauffé à blanc.
+   */
   bodyBase: '#242C33',
   bodyMuscle: '#3A454E',
-  bodyPrimary: '#D7FC70',
-  bodySecondary: '#8DBA54',
-  bodyStabilizer: '#567A46',
+  bodyPrimary: '#F7D8B5',
+  bodySecondary: '#E0693A',
+  bodyStabilizer: '#7A3524',
 
   /** Pastilles proposées à la création d'une séance. */
-  routineColors: ['#D7FC70', '#8AB8FB', '#6EDCB4', '#BAA4F4', '#EAC37A', '#F2A0BA'],
+  routineColors: ['#ECE4D4', '#8AB8FB', '#6EDCB4', '#BAA4F4', '#EAC37A', '#F2A0BA'],
 } as const;
 
 export const radius = { sm: 8, md: 12, lg: 20, xl: 28, pill: 999 } as const;

@@ -58,7 +58,7 @@ export default function HomeScreen() {
             <Pressable accessibilityRole="button" onPress={() => next || active ? router.push('/routines') : launch(null)} style={s.heroLink}><Text style={s.heroLinkText}>{next || active ? 'Voir mes séances' : 'Ou commencer une séance libre'}</Text><Icon name="arrow-forward" size={14} /></Pressable>
           </View>
         </View>
-        <Text style={s.heroIndex}>ATLAS / TRAINING CLUB</Text>
+        <Text style={s.heroIndex}>TRAKR / SUIVI D’ENTRAÎNEMENT</Text>
       </View>
       <View style={[s.weekColumn, wide && { flex: 1 }]}>
         <WeekCard week={week} streakWeeks={dashboard.streakWeeks} />

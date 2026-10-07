@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps, ComponentPropsWithRef, ReactNode } from 'react';
 import { useId } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
-import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
+import type { ColorValue, StyleProp, TextStyle, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 
@@ -11,7 +11,7 @@ import { HIT, c, font, radius, space, type } from '../lib/theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
-export function Icon({ name, size = 18, color = c.textDim }: { name: IconName; size?: number; color?: string }) {
+export function Icon({ name, size = 18, color = c.textDim }: { name: IconName; size?: number; color?: ColorValue }) {
   return <Ionicons name={name} size={size} color={color} />;
 }
 
@@ -163,8 +163,11 @@ export function Button({
   size = 'md',
   style,
 }: ButtonProps) {
+  // Désactivé, le bouton principal perd son dégradé : une couleur d'accent
+  // passée en transparence devient boueuse.
+  const flat = variant === 'primary' && disabled;
   const tint =
-    variant === 'primary' ? c.onAccent : variant === 'danger' ? c.danger : variant === 'ghost' ? c.textDim : c.text;
+    flat ? c.textFaint : variant === 'primary' ? c.onAccent : variant === 'danger' ? c.danger : variant === 'ghost' ? c.textDim : c.text;
   const r = size === 'lg' ? radius.lg : radius.md;
   return (
     <Pressable
@@ -177,12 +180,12 @@ export function Button({
         size === 'lg' && styles.btnLg,
         variant === 'secondary' && styles.btnSecondary,
         variant === 'danger' && styles.btnDanger,
-        disabled && styles.btnDisabled,
+        flat ? styles.btnFlatDisabled : disabled && styles.btnDisabled,
         pressed && styles.btnPressed,
         style,
       ]}
     >
-      {variant === 'primary' ? <GradientFill borderRadius={r} /> : null}
+      {variant === 'primary' && !flat ? <GradientFill borderRadius={r} /> : null}
       {icon ? <Icon name={icon} size={size === 'lg' ? 20 : 17} color={tint} /> : null}
       <Text style={[styles.btnLabel, size === 'lg' && styles.btnLabelLg, { color: tint }]}>{label}</Text>
     </Pressable>
@@ -465,6 +468,7 @@ export const styles = StyleSheet.create({
   btnSecondary: { backgroundColor: c.surfaceAlt, borderWidth: 1, borderColor: c.borderStrong },
   btnDanger: { backgroundColor: c.dangerDim },
   btnDisabled: { opacity: 0.4 },
+  btnFlatDisabled: { backgroundColor: c.surfaceHigh },
   btnPressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
   btnLabel: { fontSize: 15, fontWeight: '700' },
   btnLabelLg: { fontSize: 17 },

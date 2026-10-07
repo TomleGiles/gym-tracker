@@ -3,7 +3,7 @@ import { and, asc, desc, eq, inArray, isNull, max, ne, sql } from 'drizzle-orm';
 import { nowIso, uuidv7 } from '../../lib/id';
 import { e1rm } from '../../lib/strength';
 import { bumpRevision, db } from '../client';
-import { exercise, exerciseStats, session, sessionExercise, setLog } from '../schema';
+import { cardioLog, exercise, exerciseStats, session, sessionExercise, setLog } from '../schema';
 import type { Exercise, ExerciseInSession, Session, SetLog, SetType } from '../schema';
 import { getRoutine } from './routines';
 import { queueOp } from './sync';
@@ -102,6 +102,7 @@ export function discardSession(id: string): void {
   db.transaction((tx) => {
     tx.update(session).set({ deletedAt: ts, endedAt: ts, updatedAt: ts }).where(eq(session.id, id)).run();
     tx.update(setLog).set({ deletedAt: ts, updatedAt: ts }).where(eq(setLog.sessionId, id)).run();
+    tx.update(cardioLog).set({ deletedAt: ts, updatedAt: ts }).where(eq(cardioLog.sessionId, id)).run();
     queueOp(tx, 'session', id, 'delete');
   });
   for (const exId of exerciseIdsOfSession(id)) recomputeExerciseStats(exId);

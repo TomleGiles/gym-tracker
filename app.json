@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "ATLAS",
+    "name": "Trakr",
     "slug": "muscu-tracker",
     "scheme": "muscutracker",
     "version": "1.0.0",
@@ -41,7 +41,7 @@
       [
         "expo-notifications",
         {
-          "color": "#D7FC70"
+          "color": "#ECE4D4"
         }
       ],
       "expo-sqlite",

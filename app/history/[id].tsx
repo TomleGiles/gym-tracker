@@ -1,13 +1,16 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 
+import { CardioList } from '../../components/Cardio';
 import { Text } from '../../components/Text';
 import { BodyMap, highlightsFromIntensities } from '../../components/BodyMap/BodyMap';
 import { Badge, Card, EmptyState, Icon, PageHeader, Screen, SectionTitle, Stat } from '../../components/ui';
 import { useQuery } from '../../db/client';
+import { getSessionCardio } from '../../db/queries/cardio';
 import { musclesOf } from '../../db/queries/exercises';
 import { getSessionDetail } from '../../db/queries/stats';
 import type { Muscle } from '../../db/schema';
+import { cardioDuration } from '../../lib/cardio';
 import { SET_TYPE_LABEL, clockTime, duration, longDate, plural, tonnageLabel } from '../../lib/format';
 import { e1rm, fmtE1rm, fmtKg, tonnage } from '../../lib/strength';
 import { c, font, radius, space } from '../../lib/theme';
@@ -19,6 +22,7 @@ export default function SessionHistoryScreen() {
   const { width } = useWindowDimensions();
   const wide = width >= 850;
   const detail = useQuery(() => getSessionDetail(id), [id]);
+  const cardio = useQuery(() => getSessionCardio(id), [id]);
 
   const highlights = useQuery(() => {
     const d = getSessionDetail(id);
@@ -69,14 +73,17 @@ export default function SessionHistoryScreen() {
               label="Records"
               tone={summary.prCount ? 'pr' : 'default'}
             />
+            {summary.cardioSec > 0 ? <Stat value={cardioDuration(summary.cardioSec)} label="Cardio" tone="accent" /> : null}
           </View>
-          <View style={styles.bodyWrap}>
-            <BodyMap highlights={highlights} view="both" size={wide ? 100 : 116} />
-            <Text style={styles.mapCaption}>Muscles sollicités</Text>
-          </View>
+          {exercises.length ? (
+            <View style={styles.bodyWrap}>
+              <BodyMap highlights={highlights} view="both" size={wide ? 100 : 116} />
+              <Text style={styles.mapCaption}>Muscles sollicités</Text>
+            </View>
+          ) : null}
         </Card>
 
-        <SectionTitle>{plural(exercises.length, 'exercice')}</SectionTitle>
+        {exercises.length ? <SectionTitle>{plural(exercises.length, 'exercice')}</SectionTitle> : null}
 
         <View style={styles.exerciseGrid}>
         {exercises.map((ex) => {
@@ -121,6 +128,13 @@ export default function SessionHistoryScreen() {
           );
         })}
         </View>
+
+        {cardio.length ? (
+          <>
+            <SectionTitle>Cardio</SectionTitle>
+            <CardioList entries={cardio} />
+          </>
+        ) : null}
       </Screen>
     </>
   );

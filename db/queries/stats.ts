@@ -4,6 +4,7 @@ import { e1rm, tonnage, trend } from '../../lib/strength';
 import type { Trend } from '../../lib/strength';
 import { ROLE_WEIGHT, startOfLocalDaysAgo } from '../../lib/volume';
 import { db } from '../client';
+import { cardioTotalsBySession } from './cardio';
 import { exercise, exerciseMuscle, exerciseStats, muscle, session, setLog } from '../schema';
 import type { Muscle, Region, SetLog } from '../schema';
 
@@ -21,6 +22,9 @@ export type SessionSummary = {
   tonnage: number;
   prCount: number;
   exerciseCount: number;
+  /** Partie cardio (Lot 10) : 0 quand la séance n'en a pas. */
+  cardioSec: number;
+  cardioCount: number;
 };
 
 /**
@@ -52,6 +56,7 @@ export function listSessions(limit = 100): SessionSummary[] {
     .limit(limit)
     .all();
 
+  const cardio = cardioTotalsBySession();
   return rows.map((r) => ({
     id: r.s.id,
     routineName: r.s.routineName,
@@ -64,6 +69,8 @@ export function listSessions(limit = 100): SessionSummary[] {
     tonnage: r.tonnage,
     prCount: r.prCount,
     exerciseCount: r.exerciseCount,
+    cardioSec: cardio.get(r.s.id)?.durationSec ?? 0,
+    cardioCount: cardio.get(r.s.id)?.count ?? 0,
   }));
 }
 

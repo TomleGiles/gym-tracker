@@ -16,12 +16,12 @@ export default function Root({ children }: PropsWithChildren) {
           name="viewport"
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
-        <title>ATLAS — Chaque série compte</title>
-        <meta name="description" content="Tes séances, tes records, ta progression. Ton espace d'entraînement personnel, même hors ligne." />
+        <title>Trakr — Chaque série compte</title>
+        <meta name="description" content="Tes séances, tes records, ta progression. Ton suivi d'entraînement personnel, même hors ligne." />
         <meta name="theme-color" content="#0B0E11" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="ATLAS" />
+        <meta name="apple-mobile-web-app-title" content="Trakr" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icon.png" />
 

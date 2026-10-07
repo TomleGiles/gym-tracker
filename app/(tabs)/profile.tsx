@@ -128,7 +128,7 @@ export default function ProfileScreen() {
       {__DEV__ && lifetime.sessions === 0 ? (
         <Button label="Charger des données de démo" variant="ghost" icon="flask-outline" onPress={seedDemoData} />
       ) : null}
-      <View style={styles.footer}><Text style={styles.footerBrand}>ATLAS</Text><Text style={styles.footerText}>Ta progression commence avec toi.</Text></View>
+      <View style={styles.footer}><Text style={styles.footerBrand}>TRAKR</Text><Text style={styles.footerText}>Ta progression, série après série.</Text></View>
     </Screen>
   );
 }

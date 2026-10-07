@@ -49,8 +49,8 @@ démarrable hors ligne.
 
 ## Ce qui est fait
 
-Les 8 premiers lots du §10 du spec, plus un compte local et une couche de
-rétention (voir plus bas). La sync serveur (lot 9) n'est pas implémentée, mais
+Les 8 premiers lots du §10 du spec, plus le cardio (lot 10), un compte local et
+une couche de rétention (voir plus bas). La sync serveur (lot 9) n'est pas implémentée, mais
 le schéma la prépare : UUID v7 côté client, `updated_at` / `deleted_at` sur
 chaque table utilisateur, et une table `sync_queue` alimentée par toutes les
 mutations.
@@ -60,7 +60,7 @@ mutations.
 | Connexion / création de compte | `/login` |
 | Accueil : prochaine séance, objectif de la semaine, records récents | `/` |
 | Catalogue de séances, programmes de départ | `/routines`, `/routines/new`, `/routines/[id]` |
-| Bibliothèque (120 exercices, 27 muscles) | `/exercises`, `/exercises/[id]` |
+| Bibliothèque : 120 exercices, 27 muscles (bonhomme cliquable), 10 activités cardio | `/exercises`, `/exercises/[id]` |
 | Progrès : historique, export JSON | `/history`, `/history/[id]` |
 | Volume hebdo par muscle | `/history/volume` |
 | Profil : stats depuis le début, objectif hebdo, déconnexion | `/profile` |
@@ -100,13 +100,30 @@ Ce qui donne une raison de revenir, toute la logique est dans
   Haut · Bas ou Full body (`db/seed/programs.ts`) : un appui crée les modèles,
   modifiables ensuite.
 
+## Cardio
+
+Le lot 10 (§12 du spec) : une séance a deux parties, la muscu puis le cardio.
+Le cardio vit dans ses propres tables (`cardio_activity`, `cardio_log`) et ses
+requêtes (`db/queries/cardio.ts`) ; le formatage et les records sont dans
+`lib/cardio.ts`, l'interface dans `components/Cardio.tsx`.
+
+- **Mode séance** : section « Cardio » sous les exercices. Une séance sans série
+  mais avec du cardio se termine normalement au lieu d'être abandonnée.
+- **Bilan, historique** : temps de cardio, activités et records. Une séance
+  100 % cardio n'affiche pas « 0 série · 0 kg ».
+- **Bibliothèque** : onglet « Cardio », chaque activité avec ses records.
+- Les records cardio (durée, distance, allure) ne sont **pas** matérialisés
+  comme `exercise_stats` : ils se calculent à la volée sur `cardio_log`.
+- Pas encore de cardio dans les modèles de séance (voir §12, « Hors lot 10 »).
+
 ## Design
 
 Thème sombre unique (`lib/theme.ts`) : la salle est mal éclairée, le contraste
 prime. Les règles :
 
-- **Une couleur, un sens.** Orange en dégradé pour l'action principale, or pour
-  les records, vert pour la régularité, rouge uniquement pour le destructif.
+- **Une couleur, un sens.** Ivoire pour l'action principale, or pour les
+  records, vert pour la régularité, rouge uniquement pour le destructif. Le
+  BodyMap a sa propre palette « braise » (`body*`), indépendante de l'accent.
 - **La hiérarchie vient des fonds** (`bg` → `surface` → `surfaceAlt` →
   `surfaceHigh`), pas des bordures.
 - **Deux polices**, chargées au démarrage par `expo-font` : Inter pour

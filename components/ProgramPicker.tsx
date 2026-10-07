@@ -28,7 +28,7 @@ export function ProgramPicker({ onFree }: { onFree?: () => void }) {
     <View style={styles.card} onLayout={(event) => setWide(event.nativeEvent.layout.width > 780)}>
       <View style={styles.heading}>
         <View style={styles.headingText}>
-          <Badge label="LES ESSENTIELS ATLAS" tone="accent" icon="sparkles" />
+          <Badge label="LES ESSENTIELS TRAKR" tone="accent" icon="sparkles" />
           <Text style={[type.h2, { marginTop: space.md }]}>Un bon départ. Un vrai plan.</Text>
           <Text style={[type.small, { marginTop: 6 }]}>Choisis ton rythme. On prépare les séances, tu écris la suite.</Text>
         </View>

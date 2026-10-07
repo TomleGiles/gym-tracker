@@ -1,5 +1,5 @@
 {
-  "seed_version": 1,
+  "seed_version": 2,
   "_format": "Les muscles d'un exercice sont groupés par rôle (primary/secondary/stabilizer) plutôt que listés un par un : à 120 exercices, c'est nettement plus lisible à éditer. db/seed/index.ts aplatit ça vers exercise_muscle.",
   "muscles": [
     { "id": "trapezius_upper", "label_fr": "Trapèze supérieur", "region": "back", "svg_front_id": "m-trapezius-upper", "svg_back_id": "m-trapezius-upper" },

@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import Svg, { G, Path } from 'react-native-svg';
 
 import type { Muscle, MuscleRole } from '../../db/schema';
@@ -22,6 +22,8 @@ export type BodyMapProps = {
   size?: number;
   /** Les stabilisateurs encombrent plus qu'ils n'informent : masqués par défaut. */
   showStabilizers?: boolean;
+  /** Rend les muscles touchables. Reçoit l'id SVG du muscle touché. */
+  onMusclePress?: (svgId: string) => void;
 };
 
 const ROLE_COLOR: Record<MuscleRole, string> = {
@@ -30,7 +32,7 @@ const ROLE_COLOR: Record<MuscleRole, string> = {
   stabilizer: c.bodyStabilizer,
 };
 
-/** Dégradé du neutre au rouge saturé, en passant par jaune puis orange. */
+/** Dégradé du neutre à la braise, puis chauffé à blanc. */
 const RAMP = [c.bodyMuscle, c.bodyStabilizer, c.bodySecondary, c.bodyPrimary] as const;
 
 function rampColor(t: number): string {
@@ -50,6 +52,29 @@ function mix(from: string, to: string, t: number): string {
   return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
 }
 
+/**
+ * Sur le web, `onPress` sur un <Path> fait poser par react-native-svg les
+ * handlers du responder (onResponderGrant…) sur le <path> DOM, que React
+ * rejette ; et un `onClick` passé à la main est écrasé. On marque donc chaque
+ * muscle d'un `data-muscle` et un seul `onClick` sur le conteneur retrouve
+ * le muscle cliqué. Sur mobile, `onPress` fait très bien l'affaire.
+ */
+function musclePressProps(id: string, onMusclePress: ((svgId: string) => void) | undefined): object {
+  if (!onMusclePress) return {};
+  if (Platform.OS === 'web') return { 'data-muscle': id, style: { cursor: 'pointer' } };
+  return { onPress: () => onMusclePress(id) };
+}
+
+function webClickProps(onMusclePress: ((svgId: string) => void) | undefined): object {
+  if (!onMusclePress || Platform.OS !== 'web') return {};
+  return {
+    onClick: (e: { target: EventTarget | null }) => {
+      const id = (e.target as Element | null)?.closest?.('[data-muscle]')?.getAttribute('data-muscle');
+      if (id) onMusclePress(id);
+    },
+  };
+}
+
 function fillFor(value: HighlightValue | undefined, showStabilizers: boolean): string {
   if (value === undefined) return c.bodyMuscle;
   if (typeof value === 'number') return value <= 0 ? c.bodyMuscle : rampColor(value);
@@ -62,11 +87,13 @@ function BodyView({
   highlights,
   size,
   showStabilizers,
+  onMusclePress,
 }: {
   geometry: BodyGeometry;
   highlights: Record<string, HighlightValue>;
   size: number;
   showStabilizers: boolean;
+  onMusclePress?: (svgId: string) => void;
 }) {
   const [, , vbW, vbH] = geometry.viewBox.split(' ').map(Number);
   const height = (size * vbH) / vbW;
@@ -83,7 +110,12 @@ function BodyView({
   }, [geometry]);
 
   const renderMuscle = ({ id, d }: { id: string; d: string }, i: number) => (
-    <Path key={`${id}-${i}`} d={d} fill={fillFor(highlights[id], showStabilizers)} />
+    <Path
+      key={`${id}-${i}`}
+      d={d}
+      fill={fillFor(highlights[id], showStabilizers)}
+      {...musclePressProps(id, onMusclePress)}
+    />
   );
 
   return (
@@ -102,7 +134,8 @@ function BodyView({
       <G>{layers.straight.map(renderMuscle)}</G>
       <G transform={MIRROR_TRANSFORM}>{layers.mirrored.map(renderMuscle)}</G>
 
-      <G>
+      {/* Les traits de détail passent au-dessus des muscles : ils ne doivent pas avaler les touches. */}
+      <G pointerEvents="none">
         {geometry.detail.map((d, i) => (
           <Path
             key={`d${i}`}
@@ -128,10 +161,11 @@ export const BodyMap = memo(function BodyMap({
   view = 'both',
   size = 150,
   showStabilizers = false,
+  onMusclePress,
 }: BodyMapProps) {
   const views = view === 'both' ? ([FRONT, BACK] as const) : view === 'front' ? [FRONT] : [BACK];
   return (
-    <View style={styles.row}>
+    <View style={styles.row} {...webClickProps(onMusclePress)}>
       {views.map((geometry, i) => (
         <BodyView
           key={i}
@@ -139,6 +173,7 @@ export const BodyMap = memo(function BodyMap({
           highlights={highlights}
           size={size}
           showStabilizers={showStabilizers}
+          onMusclePress={onMusclePress}
         />
       ))}
     </View>

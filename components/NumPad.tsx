@@ -214,7 +214,7 @@ export const formatFr = (n: number): string =>
   (Math.round(n * 100) / 100).toString().replace('.', ',');
 
 const styles = StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.78)' },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.78)' },
   sheet: {
     width: '100%',
     maxWidth: 460,

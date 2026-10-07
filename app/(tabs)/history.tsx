@@ -8,6 +8,7 @@ import { Badge, Button, Chip, EmptyState, Icon, PageHeader, Screen } from '../..
 import { useQuery } from '../../db/client';
 import { getLifetimeStats, getMuscleVolume, listSessions } from '../../db/queries/stats';
 import type { SessionSummary } from '../../db/queries/stats';
+import { cardioDuration } from '../../lib/cardio';
 import { duration, longDate, plural, tonnageLabel } from '../../lib/format';
 import { c, font, radius, space, type } from '../../lib/theme';
 import { exportBackup } from '../../lib/backup';
@@ -151,6 +152,15 @@ function Metric({ label, value, note, icon, accent = false }: {
   </View>;
 }
 
+/** « 5 exercices · 18 séries · 25 min de cardio », sans les parties vides. */
+function sessionContent(item: SessionSummary): string {
+  const parts = item.exerciseCount || !item.cardioSec
+    ? [plural(item.exerciseCount, 'exercice'), plural(item.setCount, 'série')]
+    : [];
+  if (item.cardioSec) parts.push(`${cardioDuration(item.cardioSec)} de cardio`);
+  return parts.join(' · ');
+}
+
 function SessionRow({ item, compact, onPress }: { item: SessionSummary; compact: boolean; onPress: () => void }) {
   const date = new Date(item.startedAt);
   return (
@@ -165,7 +175,7 @@ function SessionRow({ item, compact, onPress }: { item: SessionSummary; compact:
           <Text style={styles.rowTitle} numberOfLines={1}>{item.routineName}</Text>
           {!item.endedAt ? <Badge label="EN COURS" tone="ok" /> : null}
         </View>
-        <Text style={styles.rowMeta}>{plural(item.exerciseCount, 'exercice')} · {plural(item.setCount, 'série')}{compact ? ` · ${tonnageLabel(item.tonnage)}${item.durationMin !== null ? ` · ${duration(item.durationMin)}` : ''}` : ''}</Text>
+        <Text style={styles.rowMeta}>{sessionContent(item)}{compact ? ` · ${tonnageLabel(item.tonnage)}${item.durationMin !== null ? ` · ${duration(item.durationMin)}` : ''}` : ''}</Text>
         {compact && item.prCount > 0 ? <View style={styles.rowBadge}><Badge label={plural(item.prCount, 'record')} tone="pr" icon="trophy" /></View> : null}
       </View>
       {!compact && <View style={styles.rowStats}><Text style={styles.rowTonnage}>{tonnageLabel(item.tonnage)}</Text><Text style={styles.rowDuration}>{item.durationMin !== null ? duration(item.durationMin) : 'En cours'}</Text></View>}

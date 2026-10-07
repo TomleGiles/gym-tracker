@@ -4,11 +4,14 @@ import { useEffect } from 'react';
 import { Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CardioList } from '../../../components/Cardio';
 import { RecordCard, WeekCard } from '../../../components/Progress';
 import { Text } from '../../../components/Text';
 import { Badge, Button, Card, GradientFill, Icon, Loading, SectionTitle, Stat } from '../../../components/ui';
 import { useQuery } from '../../../db/client';
+import { getSessionCardio } from '../../../db/queries/cardio';
 import { getSessionRecap } from '../../../db/queries/engagement';
+import { cardioDistance, cardioDuration } from '../../../lib/cardio';
 import { duration, plural, tonnageLabel } from '../../../lib/format';
 import { c, font, space, type } from '../../../lib/theme';
 
@@ -23,8 +26,11 @@ export default function SessionRecapScreen() {
   const { width } = useWindowDimensions();
   const wide = width >= 768;
   const recap = useQuery(() => getSessionRecap(id), [id]);
+  const cardio = useQuery(() => getSessionCardio(id), [id]);
+  const cardioRecords = cardio.reduce((n, e) => n + e.records.length, 0);
+  const cardioMeters = cardio.reduce((m, e) => m + (e.distanceM ?? 0), 0);
 
-  const hasRecords = (recap?.records.length ?? 0) > 0;
+  const hasRecords = (recap?.records.length ?? 0) > 0 || cardioRecords > 0;
   useEffect(() => {
     if (Platform.OS === 'web' || !recap) return;
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -44,9 +50,10 @@ export default function SessionRecapScreen() {
   // Seulement quand c'est une bonne nouvelle : une séance écourtée n'a pas à
   // finir sur « −60 % ». Les records et la semaine suffisent à la valoriser.
   const deltaPct = tonnageDelta && tonnageDelta.ratio > 0 ? Math.round(tonnageDelta.ratio * 100) : null;
+  const recordTotal = records.length + cardioRecords;
   const headline = hasRecords
-    ? records.length > 1
-      ? `${records.length} records battus`
+    ? recordTotal > 1
+      ? `${recordTotal} records battus`
       : 'Nouveau record'
     : deltaPct !== null
       ? 'Plus fort que la dernière fois'
@@ -57,7 +64,7 @@ export default function SessionRecapScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.hero, wide && styles.heroWide]}>
           <View style={[styles.heroCopy, wide && styles.heroCopyWide]}>
-            <Text style={styles.brand}>ATLAS / BILAN DE SÉANCE</Text>
+            <Text style={styles.brand}>TRAKR / BILAN DE SÉANCE</Text>
             <Text style={[styles.headline, wide && styles.headlineWide]}>DU TRAVAIL.{ '\n' }DU PROGRÈS.</Text>
             <Text style={styles.headlineSub}>{headline}.</Text>
             <Text style={styles.kicker}>{summary.routineName} · {sessionNumber}{sessionNumber === 1 ? 're' : 'e'} séance</Text>
@@ -78,8 +85,16 @@ export default function SessionRecapScreen() {
               value={summary.durationMin !== null ? duration(summary.durationMin) : '—'}
               label="Durée"
             />
-            <Stat size="lg" value={String(summary.setCount)} label="Séries" />
-            <Stat size="lg" value={tonnageLabel(summary.tonnage)} label="Tonnage" />
+            {/* Une séance 100 % cardio n'a pas à afficher « 0 série · 0 kg ». */}
+            {summary.setCount > 0 ? (
+              <>
+                <Stat size="lg" value={String(summary.setCount)} label="Séries" />
+                <Stat size="lg" value={tonnageLabel(summary.tonnage)} label="Tonnage" />
+              </>
+            ) : cardioMeters > 0 ? (
+              <Stat size="lg" value={cardioDistance(cardioMeters)} label="Distance" />
+            ) : null}
+            {summary.cardioSec > 0 ? <Stat size="lg" value={cardioDuration(summary.cardioSec)} label="Cardio" tone="accent" /> : null}
           </View>
           {deltaPct !== null ? (
             <View style={styles.deltaRow}>
@@ -91,7 +106,7 @@ export default function SessionRecapScreen() {
           ) : null}
         </Card>
 
-        {hasRecords ? (
+        {records.length ? (
           <>
             <SectionTitle right={<Badge label={plural(records.length, 'record')} tone="pr" icon="trophy" />}>
               Records
@@ -109,6 +124,17 @@ export default function SessionRecapScreen() {
           </>
         ) : null}
 
+        {cardio.length ? (
+          <>
+            <SectionTitle
+              right={cardioRecords ? <Badge label={plural(cardioRecords, 'record')} tone="pr" icon="trophy" /> : undefined}
+            >
+              Cardio
+            </SectionTitle>
+            <CardioList entries={cardio} />
+          </>
+        ) : null}
+
         <SectionTitle>La régularité fait la différence</SectionTitle>
         <WeekCard week={week} streakWeeks={streakWeeks} />
       </ScrollView>
@@ -116,7 +142,7 @@ export default function SessionRecapScreen() {
       <View style={styles.footer}>
         <Button label="Retour au tableau de bord" size="lg" icon="arrow-forward" onPress={() => router.replace('/')} />
         <Button
-          label="Voir le détail des séries"
+          label="Voir le détail de la séance"
           variant="ghost"
           onPress={() => router.replace(`/history/${id}`)}
         />

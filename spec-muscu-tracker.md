@@ -18,7 +18,7 @@ Application de suivi d'entraînement en salle, **une seule codebase pour mobile 
 ### Hors périmètre V1 (à noter mais ne pas coder)
 
 - Multi-utilisateurs / social / partage
-- Cardio, natation, mesures corporelles
+- Natation, mesures corporelles (le cardio est arrivé au lot 10, voir §12)
 - Génération de programme par IA
 - Import/export de programmes tiers
 
@@ -393,6 +393,7 @@ muscu-tracker/
 | **7** | Vue hebdo par muscle, export JSON | Vision d'ensemble |
 | **8** | Build web + PWA installable | Web + mobile en prod |
 | **9** | Sync serveur | Multi-appareils |
+| **10** | Cardio, deuxième partie de la séance (§12) | Tapis, vélo, rameur… loggés avec la muscu |
 
 **Le lot 4 est le seul indispensable.** Livre-le, utilise l'app 3 semaines à tes propres séances, puis décide de la suite — l'usage réel réordonnera la liste mieux que toi maintenant.
 
@@ -405,3 +406,56 @@ muscu-tracker/
 - **`react-native-svg` sur le web** demande `react-native-svg-transformer` configuré dans `metro.config.js` — à valider dès le lot 2, pas au lot 8.
 - **Fuseaux horaires** : stocker en UTC ISO, afficher en local. Une séance à 23 h doit tomber le bon jour dans la vue hebdo.
 - **Barres à vide** : la barre olympique fait 20 kg, une machine convergente affiche la plaque. Prévoir `exercise.bar_weight_kg` si tu veux du tonnage juste — sinon assume que le champ « poids » est ce qui est écrit sur la machine, et documente-le.
+
+---
+
+## 12. Cardio (lot 10)
+
+### Principe
+
+Une séance a **deux parties** : la musculation, puis le cardio. Le cardio n'est
+pas un exercice de plus glissé entre deux exercices de force : il se fait d'une
+traite, en fin de séance, sans séries ni repos. Une partie peut être vide — une
+séance 100 % cardio est une vraie séance et compte pour l'objectif de la semaine.
+
+### Modèle
+
+Deux tables à part, pour que rien du calcul de force (tonnage, 1RM, PR, BodyMap)
+n'ait à exclure le cardio :
+
+- `cardio_activity` — référentiel seedé : `id`, `label_fr`, `setting`
+  (`gym` | `outdoor`), `icon`, `pace` (`per_km` | `per_500m` | `speed` | NULL si
+  pas de distance), `level_label` (« Inclinaison (%) », « Résistance »… ou NULL),
+  `position`.
+- `cardio_log` — une ligne par activité faite dans une séance : `session_id`,
+  `activity_id`, `position`, `duration_sec` (obligatoire), `distance_m`,
+  `calories`, `level` (facultatifs), plus `logged_at` / `updated_at` /
+  `deleted_at` comme toute table utilisateur.
+
+### Activités
+
+En salle : tapis de course, vélo d'appartement, rameur, vélo elliptique,
+stepper / escalier, SkiErg, corde à sauter. En extérieur : course à pied, vélo,
+marche.
+
+### Saisie
+
+En mode séance, sous les exercices : « Ajouter du cardio » → choix de
+l'activité → durée (min + s), distance si l'activité en a une (mètres pour le
+rameur et le SkiErg, km sinon), calories et niveau facultatifs. La dernière
+fois sur l'activité pré-remplit le formulaire, comme pour la muscu. L'allure
+s'affiche au fil de la saisie : min/km, min/500 m ou km/h selon l'activité.
+
+### Records
+
+Par activité : plus longue durée, plus longue distance, meilleure allure (plus
+grande vitesse moyenne). Un record se compare aux activités **antérieures** du
+même type ; la toute première fois n'en est pas un. Calculés à la volée — une ou
+deux lignes par séance, pas besoin de vue matérialisée.
+
+### Hors lot 10
+
+- Partie cardio prévue dans les modèles de séance (« Push 1 » + 20 min de vélo).
+- Cardio d'échauffement, avant la muscu.
+- Temps de cardio de la semaine sur l'accueil, fréquence cardiaque.
+
