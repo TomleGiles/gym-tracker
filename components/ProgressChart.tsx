@@ -1,7 +1,7 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useId, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
-import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
 
 import { Text } from './Text';
 import { shortDate } from '../lib/format';
@@ -25,6 +25,7 @@ export function ProgressChart({
   unit?: string;
 }) {
   const [width, setWidth] = useState(0);
+  const gradientId = `chart-${useId().replace(/:/g, '')}`;
   const onLayout = useCallback((e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width), []);
 
   const geom = useMemo(() => {
@@ -82,6 +83,7 @@ export function ProgressChart({
     <View onLayout={onLayout} style={{ height }}>
       {geom ? (
         <Svg width={width} height={height}>
+          <Defs><LinearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1"><Stop offset="0" stopColor={c.accent} stopOpacity={0.2} /><Stop offset="1" stopColor={c.accent} stopOpacity={0} /></LinearGradient></Defs>
           {geom.grid.map((g, i) => (
             <Line
               key={i}
@@ -91,6 +93,7 @@ export function ProgressChart({
               y2={g.y}
               stroke={c.border}
               strokeWidth={1}
+              strokeDasharray="3 5"
             />
           ))}
           {geom.grid.map((g, i) => (
@@ -99,8 +102,10 @@ export function ProgressChart({
             </SvgText>
           ))}
 
-          <Path d={geom.area} fill={c.accent} fillOpacity={0.12} />
+          <Path d={geom.area} fill={`url(#${gradientId})`} />
           <Path d={geom.line} fill="none" stroke={c.accent} strokeWidth={2.5} strokeLinejoin="round" />
+
+          <Circle cx={geom.x(points.length - 1)} cy={geom.y(geom.last.value)} r={10} fill={c.accent} fillOpacity={0.12} />
 
           {points.map((p, i) => (
             <Circle
@@ -172,11 +177,11 @@ const styles = StyleSheet.create({
   placeholderText: { color: c.textFaint, fontSize: 13, textAlign: 'center', lineHeight: 19 },
   unit: { position: 'absolute', top: 0, right: 0, color: c.textFaint, fontSize: 10 },
 
-  barRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, height: 26 },
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, height: 34 },
   barLabel: { color: c.textDim, fontSize: 12, width: 118 },
   barTrack: {
     flex: 1,
-    height: 8,
+    height: 6,
     borderRadius: 4,
     backgroundColor: c.surfaceAlt,
     overflow: 'hidden',

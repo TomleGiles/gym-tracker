@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps, ComponentPropsWithRef, ReactNode } from 'react';
 import { useId } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
@@ -26,17 +26,18 @@ export function Screen({
   edges?: ('top' | 'bottom')[];
   style?: StyleProp<ViewStyle>;
 }) {
+  const { width } = useWindowDimensions();
   const inner = scroll ? (
     <ScrollView
       style={styles.flex}
-      contentContainerStyle={[styles.scrollContent, style]}
+      contentContainerStyle={[styles.scrollContent, width >= 900 && { padding: 32, paddingBottom: 48 }, style]}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
       {children}
     </ScrollView>
   ) : (
-    <View style={[styles.flex, style]}>{children}</View>
+    <View style={[styles.flex, styles.contentWidth, style]}>{children}</View>
   );
   return (
     <SafeAreaView style={styles.screen} edges={edges}>
@@ -49,10 +50,29 @@ export function Title({ children, style }: { children: ReactNode; style?: StyleP
   return <Text style={[type.title, style]}>{children}</Text>;
 }
 
+/** Même hiérarchie sur tous les espaces, avec une action toujours accessible. */
+export function PageHeader({ eyebrow, title, subtitle, action }: {
+  eyebrow?: string;
+  title: string;
+  subtitle?: string;
+  action?: ReactNode;
+}) {
+  return (
+    <View style={styles.pageHeader}>
+      <View style={{ flex: 1, minWidth: 180, gap: 7 }}>
+        {eyebrow ? <Text style={[type.overline, { color: c.accent }]}>{eyebrow}</Text> : null}
+        <Text accessibilityRole="header" style={type.title}>{title}</Text>
+        {subtitle ? <Text style={type.small}>{subtitle}</Text> : null}
+      </View>
+      {action}
+    </View>
+  );
+}
+
 export function SectionTitle({ children, right }: { children: ReactNode; right?: ReactNode }) {
   return (
     <View style={styles.sectionRow}>
-      <Text style={type.overline}>{children}</Text>
+      <Text style={[type.h3, { fontSize: 17 }]}>{children}</Text>
       {right}
     </View>
   );
@@ -118,7 +138,7 @@ export function Card({
   const base = [styles.card, outlined && styles.cardOutlined];
   if (!onPress) return <View style={[...base, style]}>{children}</View>;
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [...base, pressed && styles.pressed, style]}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [...base, style, pressed && styles.pressed]}>
       {children}
     </Pressable>
   );
@@ -144,7 +164,7 @@ export function Button({
   style,
 }: ButtonProps) {
   const tint =
-    variant === 'primary' ? '#FFFFFF' : variant === 'danger' ? c.danger : variant === 'ghost' ? c.textDim : c.text;
+    variant === 'primary' ? c.onAccent : variant === 'danger' ? c.danger : variant === 'ghost' ? c.textDim : c.text;
   const r = size === 'lg' ? radius.lg : radius.md;
   return (
     <Pressable
@@ -410,7 +430,9 @@ export function ProgressRing({
 export const styles = StyleSheet.create({
   flex: { flex: 1 },
   screen: { flex: 1, backgroundColor: c.bg },
-  scrollContent: { padding: space.lg, paddingBottom: space.xxl * 2, gap: space.md },
+  contentWidth: { width: '100%', maxWidth: 1320, alignSelf: 'center' },
+  scrollContent: { width: '100%', maxWidth: 1320, alignSelf: 'center', padding: 20, paddingBottom: space.xxl * 2, gap: 20 },
+  pageHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: space.lg, marginBottom: 8 },
 
   sectionRow: {
     flexDirection: 'row',
@@ -423,6 +445,8 @@ export const styles = StyleSheet.create({
     backgroundColor: c.surface,
     borderRadius: radius.lg,
     padding: space.lg,
+    borderWidth: 1,
+    borderColor: c.border,
   },
   cardOutlined: { borderWidth: 1, borderColor: c.border },
   pressed: { opacity: 0.7 },
@@ -438,7 +462,7 @@ export const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   btnLg: { minHeight: 56, borderRadius: radius.lg },
-  btnSecondary: { backgroundColor: c.surfaceHigh },
+  btnSecondary: { backgroundColor: c.surfaceAlt, borderWidth: 1, borderColor: c.borderStrong },
   btnDanger: { backgroundColor: c.dangerDim },
   btnDisabled: { opacity: 0.4 },
   btnPressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
@@ -455,12 +479,12 @@ export const styles = StyleSheet.create({
 
   chip: {
     paddingHorizontal: space.md + 2,
-    height: 36,
+    minHeight: HIT,
     justifyContent: 'center',
     borderRadius: radius.pill,
     backgroundColor: c.surfaceAlt,
   },
-  chipActive: { backgroundColor: c.text },
+  chipActive: { backgroundColor: c.accent },
   chipLabel: { color: c.textDim, fontSize: 13, fontWeight: '600' },
   chipLabelActive: { color: c.bg },
 
@@ -511,5 +535,5 @@ export const styles = StyleSheet.create({
   badgeLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
 
   avatar: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  avatarLabel: { color: '#FFFFFF', fontWeight: '800' },
+  avatarLabel: { color: c.onAccent, fontWeight: '800' },
 });

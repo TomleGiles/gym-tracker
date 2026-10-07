@@ -1,13 +1,13 @@
 {
-  "name": "Muscu Tracker",
-  "short_name": "Muscu",
-  "description": "Suivi d'entraînement en salle — hors ligne, sur cet appareil.",
+  "name": "ATLAS — Chaque série compte",
+  "short_name": "ATLAS",
+  "description": "Tes séances, tes records, ta progression. Ton espace d'entraînement personnel, même hors ligne.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0B0D10",
-  "theme_color": "#0B0D10",
+  "background_color": "#0B0E11",
+  "theme_color": "#0B0E11",
   "lang": "fr",
   "icons": [
     { "src": "/icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" },

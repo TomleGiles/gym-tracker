@@ -100,6 +100,7 @@ export function NumPad({
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Fermer le pavé" />
       <SafeAreaView edges={['bottom']} style={styles.sheet}>
+        <View style={styles.handle} />
         <View style={styles.head}>
           <View style={styles.headText}>
             <Text style={styles.title} numberOfLines={1}>
@@ -107,7 +108,7 @@ export function NumPad({
             </Text>
             <Text style={styles.subtitle}>{request.subtitle}</Text>
           </View>
-          <Pressable onPress={onClose} hitSlop={10} style={styles.close}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Fermer le pavé numérique" onPress={onClose} hitSlop={10} style={styles.close}>
             <Icon name="chevron-down" size={22} color={c.textDim} />
           </Pressable>
         </View>
@@ -145,6 +146,8 @@ export function NumPad({
         </View>
 
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Valider la série"
           onPress={onValidate}
           style={({ pressed }) => [styles.validate, pressed && { opacity: 0.7 }]}
         >
@@ -168,7 +171,7 @@ function FieldCell({
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={[styles.fieldCell, active && styles.fieldCellActive]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`${label} : ${value}`} accessibilityState={{ selected: active }} onPress={onPress} style={[styles.fieldCell, active && styles.fieldCellActive]}>
       <Text style={[styles.fieldValue, font.tabular, active && { color: c.text }]}>{value}</Text>
       <Text style={styles.fieldLabel}>{label}</Text>
     </Pressable>
@@ -177,7 +180,7 @@ function FieldCell({
 
 function BumpButton({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.bump, pressed && { opacity: 0.6 }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.bump, pressed && { opacity: 0.6 }]}>
       <Text style={[styles.bumpLabel, font.tabular]}>{label}</Text>
     </Pressable>
   );
@@ -187,6 +190,8 @@ function Key({ value, onPress, disabled }: { value: string; onPress: () => void;
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={value === 'del' ? 'Effacer le dernier chiffre' : value}
       disabled={disabled}
       style={({ pressed }) => [styles.key, pressed && styles.keyPressed, disabled && { opacity: 0.3 }]}
     >
@@ -209,8 +214,12 @@ export const formatFr = (n: number): string =>
   (Math.round(n * 100) / 100).toString().replace('.', ',');
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.78)' },
   sheet: {
+    width: '100%',
+    maxWidth: 460,
+    alignSelf: 'center',
+    marginTop: 'auto',
     backgroundColor: c.surface,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
@@ -219,6 +228,7 @@ const styles = StyleSheet.create({
     padding: space.lg,
     gap: space.md,
   },
+  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: c.borderStrong, alignSelf: 'center', marginTop: -4 },
   head: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   headText: { flex: 1 },
   title: { color: c.text, fontSize: 16, fontWeight: '700' },
@@ -235,8 +245,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  fieldCellActive: { borderColor: c.accent },
-  fieldValue: { color: c.textDim, fontSize: 30, fontWeight: '800' },
+  fieldCellActive: { borderColor: c.accent, backgroundColor: c.accentDim },
+  fieldValue: { color: c.textDim, fontSize: 38, ...font.display },
   fieldLabel: { color: c.textFaint, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
 
   bumpRow: { flexDirection: 'row', gap: space.md },

@@ -46,7 +46,7 @@ export const SetRow = memo(function SetRow({
 
   return (
     <View style={[styles.row, done && styles.rowDone]}>
-      <Pressable onLongPress={onLongPress} hitSlop={6} style={styles.indexCell}>
+      <Pressable onLongPress={onLongPress} hitSlop={6} style={styles.indexCell} accessibilityLabel={`Série ${index}`} accessibilityHint="Appui long pour supprimer cette série">
         <Text style={[styles.index, font.tabular, isWarmup && { color: c.warn }]}>
           {isWarmup ? 'É' : index}
         </Text>
@@ -63,13 +63,13 @@ export const SetRow = memo(function SetRow({
         onPress={onValidate}
         onLongPress={onLongPress}
         accessibilityRole="button"
-        accessibilityLabel={done ? `Série ${index} enregistrée` : `Valider la série ${index}`}
+        accessibilityLabel={done ? `Modifier la série ${index} enregistrée` : `Valider la série ${index}`}
         style={({ pressed }) => [styles.check, done && styles.checkDone, pressed && { opacity: 0.6 }]}
       >
         {done ? (
           <Icon name="checkmark" size={20} color={c.bg} />
         ) : (
-          <View style={styles.checkEmpty} />
+          <Icon name="checkmark" size={20} color={c.accent} />
         )}
       </Pressable>
 
@@ -113,8 +113,8 @@ function Cell({
 
 export const setRowStyles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.xs },
-  headerIndex: { width: 26, textAlign: 'center', color: c.textFaint, fontSize: 10, fontWeight: '700' },
-  headerPrevious: { width: 74, color: c.textFaint, fontSize: 10, fontWeight: '700' },
+  headerIndex: { width: 22, textAlign: 'center', color: c.textFaint, fontSize: 10, fontWeight: '700' },
+  headerPrevious: { width: 58, color: c.textFaint, fontSize: 9, fontWeight: '700' },
   headerCell: { flex: 1, textAlign: 'center', color: c.textFaint, fontSize: 10, fontWeight: '700' },
   headerCheck: { width: 44 },
 });
@@ -124,20 +124,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.sm,
-    paddingVertical: 5,
+    paddingVertical: 7,
     paddingHorizontal: space.xs,
     borderRadius: radius.md,
   },
-  rowDone: { backgroundColor: 'rgba(52,211,153,0.06)' },
+  rowDone: { backgroundColor: c.okDim },
 
-  indexCell: { width: 26, alignItems: 'center', justifyContent: 'center', height: 44 },
+  indexCell: { width: 22, alignItems: 'center', justifyContent: 'center', height: 48 },
   index: { color: c.textFaint, fontSize: 13, fontWeight: '800' },
 
-  previous: { width: 74, color: c.textFaint, fontSize: 13 },
+  previous: { width: 58, color: c.textFaint, fontSize: 11 },
 
   cell: {
     flex: 1,
-    height: 44,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.md,
@@ -147,15 +147,15 @@ const styles = StyleSheet.create({
   },
   cellDone: { backgroundColor: 'transparent', borderColor: 'transparent' },
   cellPressed: { borderColor: c.accent },
-  cellValue: { color: c.text, fontSize: 17, fontWeight: '700' },
+  cellValue: { color: c.text, fontSize: 20, ...font.display },
 
   check: {
     width: 44,
-    height: 44,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.md,
-    backgroundColor: c.surfaceAlt,
+    backgroundColor: c.accentDim,
     borderWidth: 1,
     borderColor: c.border,
   },
@@ -170,5 +170,5 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     paddingHorizontal: 4,
   },
-  prTagLabel: { color: c.bg, fontSize: 9, fontWeight: '900' },
+  prTagLabel: { color: c.bg, fontSize: 9, fontWeight: '800' },
 });

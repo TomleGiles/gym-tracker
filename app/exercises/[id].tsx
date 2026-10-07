@@ -1,10 +1,10 @@
-import { useLocalSearchParams } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { Text } from '../../components/Text';
 import { BodyMap, highlightsFromRoles } from '../../components/BodyMap/BodyMap';
 import { ProgressChart } from '../../components/ProgressChart';
-import { Badge, Card, Chip, EmptyState, Icon, Screen, SectionTitle, Stat } from '../../components/ui';
+import { Badge, Card, Chip, EmptyState, Icon, PageHeader, Screen, SectionTitle, Stat } from '../../components/ui';
 import { useQuery } from '../../db/client';
 import { getExercise } from '../../db/queries/exercises';
 import { getExerciseProgress } from '../../db/queries/stats';
@@ -21,6 +21,9 @@ const TREND_UI: Record<Trend, { icon: 'trending-up' | 'remove' | 'trending-down'
 
 export default function ExerciseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const { width } = useWindowDimensions();
+  const wide = width >= 850;
   const exercise = useQuery(() => getExercise(id), [id]);
   const progress = useQuery(() => getExerciseProgress(id), [id]);
 
@@ -42,7 +45,7 @@ export default function ExerciseDetailScreen() {
     <>
       <Screen scroll edges={[]}>
         <View style={styles.titleBlock}>
-          <Text style={styles.title}>{exercise.labelFr}</Text>
+          <PageHeader eyebrow="LE MOUVEMENT EN DÉTAIL" title={exercise.labelFr} />
           <View style={styles.tagRow}>
             <Badge label={EQUIPMENT_LABEL[exercise.equipment]} />
             <Badge label={exercise.mechanic === 'compound' ? 'Polyarticulaire' : 'Isolation'} />
@@ -51,9 +54,11 @@ export default function ExerciseDetailScreen() {
           </View>
         </View>
 
-        <Card>
+        <View style={[styles.detailGrid, wide && styles.detailGridWide]}>
+        <Card style={wide && styles.anatomyCard}>
+          <Text style={styles.panelEyebrow}>ANATOMIE DU MOUVEMENT</Text>
           <View style={styles.bodyWrap}>
-            <BodyMap highlights={highlights} view="both" size={132} showStabilizers />
+            <BodyMap highlights={highlights} view="both" size={wide ? 170 : 132} showStabilizers />
           </View>
           <View style={styles.legend}>
             <LegendDot color={c.bodyPrimary} label="Principal" />
@@ -68,8 +73,10 @@ export default function ExerciseDetailScreen() {
         </Card>
 
         {exercise.cues ? (
-          <Card>
-            <SectionTitle>Exécution</SectionTitle>
+          <Card style={wide && styles.executionCard}>
+            <View style={styles.executionIcon}><Icon name="scan-outline" size={26} color={c.accent} /></View>
+            <Text style={styles.panelEyebrow}>LES BONS REPÈRES</Text>
+            <SectionTitle>Maîtrise le mouvement.</SectionTitle>
             <Text style={styles.cues}>{exercise.cues}</Text>
             {exercise.barWeightKg ? (
               <Text style={styles.barNote}>
@@ -79,6 +86,7 @@ export default function ExerciseDetailScreen() {
             ) : null}
           </Card>
         ) : null}
+        </View>
 
         <SectionTitle right={
           <View style={styles.trend}>
@@ -103,6 +111,7 @@ export default function ExerciseDetailScreen() {
               <Text style={styles.chartTitle}>1RM estimé par séance</Text>
               <ProgressChart
                 points={progress.points.map((p) => ({ date: p.date, value: p.bestE1rm }))}
+                height={wide ? 240 : 180}
               />
             </Card>
 
@@ -130,13 +139,14 @@ export default function ExerciseDetailScreen() {
                 .slice(-8)
                 .reverse()
                 .map((p) => (
-                  <View key={p.sessionId} style={styles.histRow}>
+                  <Pressable key={p.sessionId} style={styles.histRow} accessibilityRole="button" accessibilityLabel={`Voir la séance du ${shortDate(p.date)}`} onPress={() => router.push(`/history/${p.sessionId}`)}>
                     <Text style={styles.histDate}>{shortDate(p.date)}</Text>
                     <Text style={styles.histMain}>
                       {fmtKg(p.topWeight)} kg · {plural(p.sets, 'série')}
                     </Text>
                     <Chip label={fmtE1rm(p.bestE1rm)} />
-                  </View>
+                    <Icon name="arrow-forward" size={15} color={c.textFaint} />
+                  </Pressable>
                 ))}
             </Card>
           </>
@@ -168,12 +178,18 @@ function MuscleLine({ label, items, strong }: { label: string; items: string[]; 
 }
 
 const styles = StyleSheet.create({
+  detailGrid: { gap: space.lg },
+  detailGridWide: { flexDirection: 'row', alignItems: 'stretch' },
+  anatomyCard: { flex: 1.2 },
+  executionCard: { flex: 1, gap: space.lg, justifyContent: 'center' },
+  panelEyebrow: { color: c.textFaint, fontSize: 10, fontWeight: '700', letterSpacing: 1.6, marginBottom: space.lg },
+  executionIcon: { backgroundColor: c.accentDim, width: 56, height: 56, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', marginBottom: space.sm },
   titleBlock: { gap: space.sm },
   title: { ...font.display, color: c.text, fontSize: 36, lineHeight: 40 },
   tagRow: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' },
 
   bodyWrap: { alignItems: 'center' },
-  legend: { flexDirection: 'row', justifyContent: 'center', gap: space.lg, marginTop: space.md },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: space.md, marginTop: space.md },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendDot: { width: 9, height: 9, borderRadius: 5 },
   legendLabel: { color: c.textDim, fontSize: 11 },
@@ -208,7 +224,7 @@ const styles = StyleSheet.create({
   bestSet: { color: c.text, fontSize: 14, marginTop: space.lg, fontWeight: '600' },
   footNote: { color: c.textFaint, fontSize: 12, marginTop: space.xs },
 
-  histRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  histRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 48, borderBottomWidth: 1, borderBottomColor: c.border, paddingVertical: space.sm },
   histDate: { color: c.textFaint, fontSize: 12, width: 58 },
   histMain: { color: c.text, fontSize: 14, flex: 1 },
   radiusPlaceholder: { borderRadius: radius.sm },

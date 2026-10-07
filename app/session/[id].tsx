@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text } from '../../components/Text';
@@ -10,7 +10,7 @@ import { NumPad, formatFr, parseFr } from '../../components/NumPad';
 import type { NumPadRequest } from '../../components/NumPad';
 import { RestTimer } from '../../components/RestTimer';
 import { SetRow, setRowStyles } from '../../components/SetRow';
-import { Badge, Button, EmptyState, Icon, IconButton, Loading } from '../../components/ui';
+import { Badge, Button, EmptyState, Icon, IconButton, Loading, ProgressRing } from '../../components/ui';
 import { useQuery } from '../../db/client';
 import {
   addExerciseToSession,
@@ -27,12 +27,14 @@ import type { ExerciseInSession, SetLog } from '../../db/schema';
 import { confirmDialog } from '../../lib/confirm';
 import { clockTime, duration, plural, relativeDay, tonnageLabel } from '../../lib/format';
 import { fmtE1rm, fmtKg, e1rm, tonnage, weightStep } from '../../lib/strength';
-import { c, font, radius, space } from '../../lib/theme';
+import { c, font, radius, space, type } from '../../lib/theme';
 import { useActiveSession } from '../../stores/activeSession';
 
 export default function SessionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const wide = width >= 1000;
 
   const session = useQuery(() => getSession(id), [id]);
   const view = useQuery(() => getSessionView(id), [id]);
@@ -103,6 +105,10 @@ export default function SessionScreen() {
     close();
   }, [id, router, stopRest, resetSessionUi, totals.sets]);
 
+  const targetSets = view.reduce((sum, entry) => sum + entry.targetSets, 0);
+  const completedTargetSets = view.reduce((sum, entry) => sum + Math.min(entry.today.length, entry.targetSets), 0);
+  const completion = targetSets ? completedTargetSets / targetSets : 0;
+
   if (!session) {
     return (
       <SafeAreaView style={styles.screen}>
@@ -114,6 +120,7 @@ export default function SessionScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.header}>
+        <View style={styles.headerInner}>
         <IconButton
           name="chevron-down"
           accessibilityLabel="Réduire la séance"
@@ -121,22 +128,32 @@ export default function SessionScreen() {
           onPress={() => router.back()}
         />
         <View style={styles.headerText}>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {session.routineName}
-          </Text>
+          <View style={styles.liveLabel}><View style={styles.liveDot} /><Text style={styles.headerTitle}>MODE SÉANCE</Text></View>
           <Text style={[styles.headerMeta, font.tabular]}>
-            {clockTime(session.startedAt)} · {duration(Math.max(0, Math.round(elapsed / 60000)))} ·{' '}
-            {plural(totals.sets, 'série')} · {tonnageLabel(totals.tonnage)}
+            Depuis {clockTime(session.startedAt)} · {duration(Math.max(0, Math.round(elapsed / 60000)))}
           </Text>
         </View>
-        <Button label="Terminer" onPress={finish} />
+        <Button label="Terminer" icon="checkmark" onPress={finish} />
+        </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.list}
+        contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.sessionHeading}>
+          <Text style={styles.eyebrow}>CHAQUE SÉRIE COMPTE.</Text>
+          <Text style={[styles.sessionTitle, wide && styles.sessionTitleWide]}>{session.routineName}</Text>
+          <View style={styles.sessionMeta}>
+            <Badge label={`${totals.done}/${view.length} exercices`} />
+            <Badge label={`${plural(totals.sets, 'série')} validée${totals.sets === 1 ? '' : 's'}`} tone="accent" />
+            <Badge label={tonnageLabel(totals.tonnage)} />
+          </View>
+          <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${Math.min(100, completion * 100)}%` }]} /></View>
+        </View>
+        <View style={[styles.workspace, wide && styles.workspaceWide]}>
+        <View style={styles.list}>
         {view.length === 0 ? (
           <EmptyState
             icon="barbell"
@@ -145,9 +162,10 @@ export default function SessionScreen() {
             action={<Button label="Ajouter un exercice" icon="add" onPress={() => setPicking(true)} />}
           />
         ) : (
-          view.map((entry) => (
+          view.map((entry, index) => (
             <ExerciseBlock
               key={entry.slotId}
+              index={index + 1}
               sessionId={id}
               entry={entry}
               expanded={expandedSlotId === entry.slotId}
@@ -167,7 +185,7 @@ export default function SessionScreen() {
           />
         ) : null}
 
-        <Pressable onPress={() => confirmDiscard(id, () => {
+        <Pressable accessibilityRole="button" onPress={() => confirmDiscard(id, () => {
           discardSession(id);
           stopRest();
           resetSessionUi();
@@ -175,6 +193,30 @@ export default function SessionScreen() {
         })}>
           <Text style={styles.discard}>Abandonner cette séance</Text>
         </Pressable>
+        </View>
+        {wide ? (
+          <View style={styles.sidebar}>
+            <View style={styles.focusCard}>
+              <Text style={styles.eyebrow}>TON AVANCÉE</Text>
+              <View style={styles.ringWrap}>
+                <ProgressRing progress={completion} size={132} stroke={8} color={c.accent}>
+                  <Text style={styles.ringValue}>{Math.round(completion * 100)}<Text style={styles.ringUnit}>%</Text></Text>
+                  <Text style={styles.ringCaption}>de ton programme</Text>
+                </ProgressRing>
+              </View>
+              <View style={styles.sideStats}>
+                <View><Text style={styles.sideStatValue}>{totals.sets}</Text><Text style={styles.sideStatLabel}>séries validées</Text></View>
+                <View><Text style={styles.sideStatValue}>{tonnageLabel(totals.tonnage)}</Text><Text style={styles.sideStatLabel}>soulevés</Text></View>
+              </View>
+            </View>
+            <View style={styles.focusCard}>
+              <View style={styles.tipHead}><Icon name="flash-outline" size={19} color={c.accent} /><Text style={styles.tipTitle}>Un geste. Une série.</Text></View>
+              <Text style={styles.tipBody}>Tes dernières charges sont déjà prêtes. Ajuste si besoin, puis coche ta série : ton repos démarre automatiquement.</Text>
+              <View style={styles.savedHint}><Icon name="checkmark-circle-outline" size={16} color={c.ok} /><Text style={styles.savedText}>Chaque série est enregistrée sur cet appareil.</Text></View>
+            </View>
+          </View>
+        ) : null}
+        </View>
       </ScrollView>
 
       <View style={styles.footer}>
@@ -211,6 +253,7 @@ export default function SessionScreen() {
 type Draft = { weight: string; reps: string };
 
 function ExerciseBlock({
+  index,
   sessionId,
   entry,
   expanded,
@@ -218,6 +261,7 @@ function ExerciseBlock({
   onRested,
   onOpenExercise,
 }: {
+  index: number;
   sessionId: string;
   entry: ExerciseInSession;
   expanded: boolean;
@@ -343,7 +387,10 @@ function ExerciseBlock({
 
   return (
     <View style={[styles.block, expanded && styles.blockExpanded, complete && styles.blockDone]}>
-      <Pressable onPress={onToggle} style={styles.blockHead}>
+      <Pressable accessibilityRole="button" accessibilityState={{ expanded }} onPress={onToggle} style={styles.blockHead}>
+        <View style={[styles.exerciseNumber, complete && styles.exerciseNumberDone]}>
+          {complete ? <Icon name="checkmark" size={19} color={c.ok} /> : <Text style={styles.exerciseNumberText}>{String(index).padStart(2, '0')}</Text>}
+        </View>
         <View style={styles.blockTitleWrap}>
           <Text style={styles.blockTitle} numberOfLines={2}>
             {entry.exercise.labelFr}
@@ -363,6 +410,10 @@ function ExerciseBlock({
 
       {expanded ? (
         <View style={styles.blockBody}>
+          <View style={styles.exerciseGuide}>
+            <View style={styles.exerciseGuideItem}><Icon name="layers-outline" size={14} color={c.accent} /><Text style={styles.exerciseGuideText}>{plural(entry.targetSets, 'série')}{entry.targetReps ? ` · ${entry.targetReps} reps` : ''}</Text></View>
+            <View style={styles.exerciseGuideItem}><Icon name="timer-outline" size={14} color={c.textDim} /><Text style={styles.exerciseGuideText}>{entry.restSeconds} s de repos</Text></View>
+          </View>
           <View style={setRowStyles.header}>
             <Text style={setRowStyles.headerIndex}>#</Text>
             <Text style={setRowStyles.headerPrevious}>PRÉCÉDENT</Text>
@@ -423,7 +474,7 @@ function ExerciseBlock({
               <IconButton
                 name="trash-outline"
                 accessibilityLabel="Retirer de la séance"
-                color="#FF7A63"
+                color={c.danger}
                 onPress={() => removeExerciseFromSession(entry.slotId)}
               />
             )}
@@ -490,19 +541,42 @@ const confirmDeleteSet = (set: SetLog, onConfirm: () => void) =>
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.bg },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-    paddingHorizontal: space.md,
-    paddingBottom: space.sm,
     borderBottomWidth: 1,
     borderBottomColor: c.border,
+    backgroundColor: c.surface,
   },
+  headerInner: { width: '100%', maxWidth: 1240, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg, paddingVertical: space.md },
   headerText: { flex: 1 },
-  headerTitle: { color: c.text, fontSize: 17, fontWeight: '800' },
-  headerMeta: { color: c.textFaint, fontSize: 12 },
+  headerTitle: { color: c.text, fontSize: 10, letterSpacing: 1.5, fontWeight: '800' },
+  headerMeta: { color: c.textDim, fontSize: 12, marginTop: 5 },
+  liveLabel: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: c.accent },
 
-  list: { padding: space.md, gap: space.sm, paddingBottom: space.xxl },
+  scrollContent: { width: '100%', maxWidth: 1240, alignSelf: 'center', padding: space.lg, paddingBottom: space.xxl, gap: space.xl },
+  sessionHeading: { gap: space.md, paddingTop: space.md },
+  eyebrow: { ...type.overline, color: c.accent, fontSize: 10, letterSpacing: 1.8 },
+  sessionTitle: { ...font.display, fontSize: 44, lineHeight: 48, color: c.text },
+  sessionTitleWide: { fontSize: 64, lineHeight: 68 },
+  sessionMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  progressTrack: { height: 4, backgroundColor: c.surfaceHigh, borderRadius: radius.pill, marginTop: space.sm, overflow: 'hidden' },
+  progressFill: { height: 4, backgroundColor: c.accent, borderRadius: radius.pill },
+  workspace: { gap: space.xl },
+  workspaceWide: { flexDirection: 'row', alignItems: 'flex-start' },
+  list: { flex: 1, gap: space.md, minWidth: 0 },
+  sidebar: { width: 288, gap: space.lg },
+  focusCard: { padding: space.xl, borderRadius: radius.xl, backgroundColor: c.surface, gap: space.md, borderWidth: 1, borderColor: c.border },
+  ringWrap: { alignItems: 'center', paddingVertical: space.sm },
+  ringValue: { ...font.display, color: c.text, fontSize: 42, lineHeight: 46 },
+  ringUnit: { ...font.display, color: c.accent, fontSize: 24 },
+  ringCaption: { color: c.textFaint, fontSize: 9 },
+  sideStats: { flexDirection: 'row', justifyContent: 'space-between', gap: space.md, paddingTop: space.md, borderTopWidth: 1, borderTopColor: c.border },
+  sideStatValue: { ...font.display, color: c.text, fontSize: 30 },
+  sideStatLabel: { color: c.textFaint, fontSize: 11 },
+  tipHead: { flexDirection: 'row', gap: space.sm, alignItems: 'center' },
+  tipTitle: { color: c.text, fontSize: 14, fontWeight: '700' },
+  tipBody: { color: c.textDim, fontSize: 12, lineHeight: 20 },
+  savedHint: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingTop: space.md, borderTopWidth: 1, borderTopColor: c.border },
+  savedText: { color: c.textFaint, flex: 1, fontSize: 10, lineHeight: 16 },
 
   block: {
     backgroundColor: c.surface,
@@ -511,8 +585,8 @@ const styles = StyleSheet.create({
     borderColor: c.border,
     overflow: 'hidden',
   },
-  blockExpanded: { borderColor: c.borderStrong },
-  blockDone: { borderColor: 'rgba(52,211,153,0.35)' },
+  blockExpanded: { borderColor: c.accent },
+  blockDone: { borderColor: c.okDim },
   blockHead: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -520,6 +594,9 @@ const styles = StyleSheet.create({
     padding: space.md,
   },
   blockTitleWrap: { flex: 1, gap: 2 },
+  exerciseNumber: { width: 34, height: 38, borderRadius: radius.sm, backgroundColor: c.surfaceAlt, justifyContent: 'center', alignItems: 'center' },
+  exerciseNumberDone: { backgroundColor: c.okDim },
+  exerciseNumberText: { ...font.display, fontSize: 22, color: c.textDim },
   blockTitle: { color: c.text, fontSize: 16, fontWeight: '700' },
   blockSub: { color: c.textFaint, fontSize: 12 },
   blockRight: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
@@ -532,6 +609,9 @@ const styles = StyleSheet.create({
     borderTopColor: c.border,
     paddingTop: space.sm,
   },
+  exerciseGuide: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md, paddingVertical: space.md, marginBottom: space.sm },
+  exerciseGuideItem: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  exerciseGuideText: { color: c.textDim, fontSize: 11 },
   blockActions: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.sm },
   addSet: {
     flex: 1,
@@ -547,7 +627,7 @@ const styles = StyleSheet.create({
   },
   addSetLabel: { color: c.textDim, fontSize: 13, fontWeight: '600' },
 
-  footer: { paddingHorizontal: space.md, paddingBottom: space.sm },
+  footer: { width: '100%', maxWidth: 1240, alignSelf: 'center', paddingHorizontal: space.lg, paddingBottom: space.sm },
   discard: {
     color: c.textFaint,
     fontSize: 13,

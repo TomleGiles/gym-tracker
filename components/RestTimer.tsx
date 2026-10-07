@@ -40,17 +40,23 @@ export function RestTimer() {
   }, [rest]);
 
   useEffect(() => {
-    if (!rest || remaining > 0 || buzzed.current) return;
+    if (!rest || rest.endsAt > Date.now() || remaining > 0 || buzzed.current) return;
     buzzed.current = true;
     if (Platform.OS !== 'web') {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
   }, [remaining, rest]);
 
-  if (!rest) return null;
+  if (!rest) return (
+    <View style={styles.idle}>
+      <Icon name="timer-outline" size={19} color={c.textFaint} />
+      <Text style={styles.idleText}>Valide une série pour lancer ton repos.</Text>
+      <View style={styles.autoBadge}><Text style={styles.autoLabel}>AUTO</Text></View>
+    </View>
+  );
 
   const done = remaining <= 0;
-  const progress = done ? 1 : 1 - remaining / rest.totalSeconds;
+  const progress = done ? 1 : Math.max(0, Math.min(1, 1 - remaining / rest.totalSeconds));
 
   return (
     <View style={[styles.bar, done && styles.barDone]}>
@@ -72,7 +78,7 @@ export function RestTimer() {
 
       <View style={styles.text}>
         <Text style={[styles.time, font.tabular, done && { color: c.ok }]}>
-          {done ? 'Repos terminé' : mmss(remaining)}
+          {done ? 'À toi de jouer' : mmss(remaining)}
         </Text>
         <Text style={styles.label} numberOfLines={1}>
           {rest.exerciseLabel}
@@ -80,19 +86,23 @@ export function RestTimer() {
       </View>
 
       {!done ? (
-        <Pressable onPress={() => extendRest(30)} hitSlop={8} style={styles.add}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Ajouter 30 secondes de repos" onPress={() => extendRest(30)} hitSlop={8} style={styles.add}>
           <Text style={styles.addLabel}>+30 s</Text>
         </Pressable>
       ) : null}
 
-      <Pressable onPress={stopRest} hitSlop={8} style={styles.close} accessibilityLabel="Arrêter le chrono">
-        <Icon name="close" size={20} color={c.textDim} />
+      <Pressable accessibilityRole="button" onPress={stopRest} hitSlop={8} style={styles.close} accessibilityLabel={done ? 'Fermer le chrono' : 'Passer le repos'}>
+        <Icon name={done ? 'checkmark' : 'play-skip-forward'} size={20} color={c.textDim} />
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  idle: { minHeight: 58, flexDirection: 'row', gap: space.sm, alignItems: 'center', paddingHorizontal: space.lg, borderRadius: radius.lg, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border },
+  idleText: { color: c.textFaint, flex: 1, fontSize: 11 },
+  autoBadge: { borderRadius: radius.sm, backgroundColor: c.surfaceHigh, paddingHorizontal: 6, paddingVertical: 4 },
+  autoLabel: { color: c.textDim, fontSize: 9, letterSpacing: 1, fontWeight: '700' },
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -106,15 +116,15 @@ const styles = StyleSheet.create({
   },
   barDone: { borderColor: c.ok },
   text: { flex: 1 },
-  time: { color: c.text, fontSize: 20, fontWeight: '800' },
+  time: { color: c.accent, fontSize: 28, ...font.display },
   label: { color: c.textFaint, fontSize: 12 },
   add: {
     paddingHorizontal: space.md,
-    height: 36,
+    height: 44,
     justifyContent: 'center',
     borderRadius: radius.md,
     backgroundColor: c.surfaceAlt,
   },
   addLabel: { color: c.text, fontSize: 13, fontWeight: '700' },
-  close: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 });

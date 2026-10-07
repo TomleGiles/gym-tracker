@@ -8,22 +8,23 @@
  * régularité (objectif, série de semaines). Une couleur = un sens.
  */
 export const c = {
-  bg: '#09090B',
-  surface: '#131316',
-  surfaceAlt: '#1B1B20',
-  surfaceHigh: '#25252C',
-  border: '#232329',
-  borderStrong: '#34343D',
+  bg: '#0B0E11',
+  surface: '#14181D',
+  surfaceAlt: '#1C2127',
+  surfaceHigh: '#272E35',
+  border: '#282E35',
+  borderStrong: '#414B55',
 
-  text: '#FAFAFA',
-  textDim: '#A1A1AA',
-  textFaint: '#66666F',
+  text: '#F4F6F8',
+  textDim: '#A9B2BB',
+  textFaint: '#87929E',
 
-  accent: '#FF5A36',
+  accent: '#D7FC70',
+  onAccent: '#17200B',
   /** Fond teinté derrière un élément accent (badge, avatar). */
-  accentDim: '#3B1810',
+  accentDim: '#28321B',
   /** Dégradé des appels à l'action principaux et des héros. */
-  accentGradient: ['#FF7A3D', '#FF3D57'] as const,
+  accentGradient: ['#D7FC70', '#BEEB52'] as const,
 
   pr: '#FFC542',
   prDim: '#3A2C0C',
@@ -36,17 +37,17 @@ export const c = {
   dangerDim: '#3E1119',
 
   /** Palette du BodyMap (§4 du spec). */
-  bodyBase: '#2A2A31',
-  bodyMuscle: '#36363F',
-  bodyPrimary: '#FF5A36',
-  bodySecondary: '#F59E42',
-  bodyStabilizer: '#FDE68A',
+  bodyBase: '#242C33',
+  bodyMuscle: '#3A454E',
+  bodyPrimary: '#D7FC70',
+  bodySecondary: '#8DBA54',
+  bodyStabilizer: '#567A46',
 
   /** Pastilles proposées à la création d'une séance. */
-  routineColors: ['#FF5A36', '#60A5FA', '#34D399', '#A78BFA', '#FBBF24', '#F472B6'],
+  routineColors: ['#D7FC70', '#8AB8FB', '#6EDCB4', '#BAA4F4', '#EAC37A', '#F2A0BA'],
 } as const;
 
-export const radius = { sm: 8, md: 12, lg: 18, xl: 24, pill: 999 } as const;
+export const radius = { sm: 8, md: 12, lg: 20, xl: 28, pill: 999 } as const;
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
 
 /** Cible tactile minimale : main moite, debout, entre deux séries. */
@@ -79,7 +80,7 @@ export const font: { tabular: TextStyle; display: TextStyle } = {
 /** Échelle typographique. Les écrans composent à partir d'ici. */
 export const type = {
   hero: { fontFamily: ff.display, fontSize: 44, lineHeight: 46, color: c.text },
-  title: { fontSize: 28, fontWeight: '800', letterSpacing: -0.6, color: c.text },
+  title: { fontSize: 32, fontWeight: '800', letterSpacing: -1.2, color: c.text },
   h2: { fontSize: 20, fontWeight: '700', letterSpacing: -0.3, color: c.text },
   h3: { fontSize: 16, fontWeight: '600', color: c.text },
   body: { fontSize: 15, lineHeight: 21, color: c.textDim },

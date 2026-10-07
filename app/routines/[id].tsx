@@ -13,6 +13,7 @@ import {
   Icon,
   IconButton,
   Input,
+  PageHeader,
   Screen,
   SectionTitle,
 } from '../../components/ui';
@@ -110,6 +111,7 @@ export default function RoutineEditScreen() {
         }}
       />
       <Screen scroll edges={[]}>
+        <PageHeader eyebrow="ATELIER D'ENTRAÎNEMENT" title="Une séance à ton image." subtitle="Ajuste ton programme. Chaque détail se sauvegarde au fil de tes modifications." />
         <Card>
           <View style={styles.headRow}>
             <View style={styles.headText}>
@@ -142,7 +144,7 @@ export default function RoutineEditScreen() {
                 {plural(routine.items.length, 'exercice')} · {plural(totalSets, 'série')} au programme
               </Text>
             </View>
-            <BodyMap highlights={highlights} view="both" size={64} />
+            <BodyMap highlights={highlights} view="both" size={80} />
           </View>
 
           <View style={styles.colorRow}>
@@ -160,6 +162,9 @@ export default function RoutineEditScreen() {
               />
             ))}
           </View>
+          {routine.items.length > 0 ? (
+            <Button label="Démarrer la séance" icon="play" size="lg" style={{ marginTop: space.xl }} onPress={() => { resetSessionUi(); router.push(`/session/${startSession(id)}`); }} />
+          ) : null}
         </Card>
 
         <SectionTitle
@@ -181,7 +186,7 @@ export default function RoutineEditScreen() {
           routine.items.map((item, index) => (
             <Card key={item.id} style={styles.item}>
               <View style={styles.itemHead}>
-                <Text style={styles.position}>{index + 1}</Text>
+                <Text style={styles.position}>{String(index + 1).padStart(2, '0')}</Text>
                 <Pressable
                   style={styles.itemTitleWrap}
                   onPress={() => router.push(`/exercises/${item.exerciseId}`)}
@@ -250,7 +255,7 @@ export default function RoutineEditScreen() {
                 <IconButton
                   name="trash-outline"
                   accessibilityLabel="Retirer de la séance"
-                  color="#FF7A63"
+                  color={c.danger}
                   onPress={() => removeRoutineItem(item.id)}
                 />
               </View>
@@ -314,28 +319,28 @@ const styles = StyleSheet.create({
   headText: { flex: 1, gap: space.xs },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   dot: { width: 10, height: 10, borderRadius: 5 },
-  name: { color: c.text, fontSize: 20, fontWeight: '800' },
+  name: { ...font.display, flexShrink: 1, color: c.text, fontSize: 36 },
   meta: { color: c.textDim, fontSize: 13 },
   colorRow: { flexDirection: 'row', gap: space.sm, marginTop: space.lg },
   swatch: { width: 28, height: 28, borderRadius: radius.pill, borderWidth: 2, borderColor: 'transparent' },
   swatchActive: { borderColor: c.text },
 
-  item: { padding: space.md, gap: space.md },
+  item: { padding: space.lg, gap: space.lg },
   itemHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   position: {
-    color: c.textFaint,
-    fontSize: 13,
-    fontWeight: '800',
-    width: 20,
+    ...font.display,
+    color: c.accent,
+    fontSize: 28,
+    width: 34,
     textAlign: 'center',
     paddingTop: 2,
   },
   itemTitleWrap: { flex: 1, gap: space.xs, alignItems: 'flex-start' },
-  itemTitle: { color: c.text, fontSize: 15, fontWeight: '600' },
+  itemTitle: { color: c.text, fontSize: 16, fontWeight: '600' },
   moveCol: { justifyContent: 'center' },
   moveBtn: { height: 28, width: 36 },
 
-  targets: { flexDirection: 'row', alignItems: 'flex-end', gap: space.sm },
+  targets: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: space.md, paddingTop: space.md, borderTopWidth: 1, borderTopColor: c.border },
   stepper: { gap: 2 },
   stepperLabel: { color: c.textFaint, fontSize: 11, fontWeight: '600' },
   stepperRow: {
@@ -345,6 +350,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   stepperValue: { color: c.text, fontSize: 14, fontWeight: '700', minWidth: 34, textAlign: 'center' },
-  repsField: { flex: 1, gap: 2 },
+  repsField: { flexGrow: 1, minWidth: 70, gap: 2 },
   repsInput: { minHeight: 40, textAlign: 'center', fontSize: 14 },
 });

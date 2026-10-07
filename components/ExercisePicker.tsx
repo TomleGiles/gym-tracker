@@ -7,8 +7,8 @@ import { useQuery } from '../db/client';
 import { listExercises, listMuscles } from '../db/queries/exercises';
 import type { Equipment } from '../db/schema';
 import { EQUIPMENT_LABEL, REGION_LABEL } from '../lib/format';
-import { c, radius, space } from '../lib/theme';
-import { Badge, Chip, EmptyState, IconButton, Input } from './ui';
+import { c, font, radius, space } from '../lib/theme';
+import { Badge, Chip, EmptyState, Icon, IconButton, Input } from './ui';
 
 const EQUIPMENTS: Equipment[] = ['barbell', 'dumbbell', 'machine', 'cable', 'bodyweight'];
 const REGIONS = ['chest', 'back', 'shoulders', 'arms', 'legs', 'core'] as const;
@@ -51,8 +51,9 @@ export function ExercisePicker({
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} transparent={false}>
       <SafeAreaView style={styles.sheet} edges={['top', 'bottom']}>
+        <View style={styles.content}>
         <View style={styles.head}>
-          <Text style={styles.title}>{title}</Text>
+          <View style={styles.headingCopy}><Text style={styles.eyebrow}>COMPOSE TA SÉANCE</Text><Text style={styles.title}>{title}</Text></View>
           <IconButton name="close" onPress={onClose} accessibilityLabel="Fermer" color={c.text} />
         </View>
 
@@ -97,6 +98,8 @@ export function ExercisePicker({
           ))}
         </ScrollView>
 
+        <View style={styles.results}><Text style={styles.resultsLabel}>{exercises.length} exercice{exercises.length > 1 ? 's' : ''} disponible{exercises.length > 1 ? 's' : ''}</Text>{search || region || equipment ? <Pressable accessibilityRole="button" onPress={() => { setSearch(''); setRegion(null); setEquipment(null); }}><Text style={styles.reset}>Tout effacer</Text></Pressable> : null}</View>
+
         <FlatList
           data={exercises}
           keyExtractor={(e) => e.id}
@@ -107,22 +110,25 @@ export function ExercisePicker({
           }
           renderItem={({ item }) => (
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Ajouter ${item.labelFr}`}
               onPress={() => onPick(item.id)}
               style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
             >
+              <View style={styles.exerciseIcon}><Icon name="barbell-outline" size={21} color={c.accent} /></View>
               <View style={styles.rowMain}>
                 <Text style={[styles.rowTitle, present.has(item.id) && { color: c.textDim }]} numberOfLines={1}>
                   {item.labelFr}
                 </Text>
                 <Text style={styles.rowMeta} numberOfLines={1}>
-                  {item.primaryLabels.join(' · ')}
+                  {EQUIPMENT_LABEL[item.equipment]} · {item.primaryLabels.join(' · ')}
                 </Text>
               </View>
-              {present.has(item.id) ? <Badge label="déjà là" /> : null}
-              <Text style={styles.equipment}>{EQUIPMENT_LABEL[item.equipment]}</Text>
+              {present.has(item.id) ? <Badge label="Ajouté" tone="ok" /> : <Icon name="add-circle-outline" size={23} color={c.textDim} />}
             </Pressable>
           )}
         />
+        </View>
       </SafeAreaView>
     </Modal>
   );
@@ -130,15 +136,21 @@ export function ExercisePicker({
 
 const styles = StyleSheet.create({
   sheet: { flex: 1, backgroundColor: c.bg },
+  content: { flex: 1, width: '100%', maxWidth: 840, alignSelf: 'center' },
+  headingCopy: { gap: space.xs, flex: 1 },
+  eyebrow: { color: c.accent, fontSize: 9, fontWeight: '700', letterSpacing: 1.6 },
   head: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingLeft: space.lg,
     paddingRight: space.sm,
-    paddingVertical: space.sm,
+    paddingVertical: space.lg,
   },
-  title: { color: c.text, fontSize: 19, fontWeight: '800' },
+  title: { ...font.display, color: c.text, fontSize: 32 },
+  results: { paddingHorizontal: space.lg, paddingVertical: space.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  resultsLabel: { color: c.textFaint, fontSize: 11 },
+  reset: { color: c.accent, fontSize: 11, fontWeight: '600' },
   searchWrap: { paddingHorizontal: space.lg },
   filterScroll: { flexGrow: 0, flexShrink: 0 },
   filters: {
@@ -161,6 +173,7 @@ const styles = StyleSheet.create({
     minHeight: 60,
   },
   rowMain: { flex: 1, gap: 2 },
+  exerciseIcon: { width: 42, height: 42, borderRadius: radius.md, backgroundColor: c.accentDim, justifyContent: 'center', alignItems: 'center' },
   rowTitle: { color: c.text, fontSize: 15, fontWeight: '600' },
   rowMeta: { color: c.textFaint, fontSize: 12 },
   equipment: { color: c.textDim, fontSize: 11, fontWeight: '600' },

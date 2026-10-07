@@ -1,9 +1,9 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { Text } from '../../components/Text';
 import { BodyMap, highlightsFromIntensities } from '../../components/BodyMap/BodyMap';
-import { Badge, Card, EmptyState, Icon, Screen, SectionTitle, Stat } from '../../components/ui';
+import { Badge, Card, EmptyState, Icon, PageHeader, Screen, SectionTitle, Stat } from '../../components/ui';
 import { useQuery } from '../../db/client';
 import { musclesOf } from '../../db/queries/exercises';
 import { getSessionDetail } from '../../db/queries/stats';
@@ -16,6 +16,8 @@ import { ROLE_WEIGHT } from '../../lib/volume';
 export default function SessionHistoryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const wide = width >= 850;
   const detail = useQuery(() => getSessionDetail(id), [id]);
 
   const highlights = useQuery(() => {
@@ -52,16 +54,10 @@ export default function SessionHistoryScreen() {
   return (
     <>
       <Screen scroll edges={[]}>
-        <View style={styles.head}>
-          <Text style={styles.title}>{summary.routineName}</Text>
-          <Text style={styles.date}>
-            {longDate(summary.startedAt)} · {clockTime(summary.startedAt)}
-            {summary.endedAt ? ` → ${clockTime(summary.endedAt)}` : ' · en cours'}
-          </Text>
-        </View>
+        <PageHeader eyebrow="DANS TON CARNET" title={summary.routineName} subtitle={`${longDate(summary.startedAt)} · ${clockTime(summary.startedAt)}${summary.endedAt ? ` → ${clockTime(summary.endedAt)}` : ' · en cours'}`} />
 
-        <Card>
-          <View style={styles.statRow}>
+        <Card style={wide && styles.summaryWide}>
+          <View style={[styles.statRow, wide && styles.summaryStats]}>
             <Stat value={String(summary.setCount)} label="Séries" />
             <Stat value={tonnageLabel(summary.tonnage)} label="Tonnage" />
             <Stat
@@ -75,12 +71,14 @@ export default function SessionHistoryScreen() {
             />
           </View>
           <View style={styles.bodyWrap}>
-            <BodyMap highlights={highlights} view="both" size={116} />
+            <BodyMap highlights={highlights} view="both" size={wide ? 100 : 116} />
+            <Text style={styles.mapCaption}>Muscles sollicités</Text>
           </View>
         </Card>
 
         <SectionTitle>{plural(exercises.length, 'exercice')}</SectionTitle>
 
+        <View style={styles.exerciseGrid}>
         {exercises.map((ex) => {
           const working = ex.sets.filter((s) => s.setType !== 'warmup');
           const best = working.reduce(
@@ -88,7 +86,7 @@ export default function SessionHistoryScreen() {
             0,
           );
           return (
-            <Card key={ex.exerciseId} style={styles.exercise}>
+            <Card key={ex.exerciseId} style={[styles.exercise, wide && styles.exerciseWide]}>
               <Pressable
                 onPress={() => router.push(`/exercises/${ex.exerciseId}`)}
                 style={styles.exerciseHead}
@@ -122,6 +120,7 @@ export default function SessionHistoryScreen() {
             </Card>
           );
         })}
+        </View>
       </Screen>
     </>
   );
@@ -133,12 +132,17 @@ const styles = StyleSheet.create({
   date: { color: c.textDim, fontSize: 14, textTransform: 'capitalize' },
 
   statRow: { flexDirection: 'row', gap: space.md },
+  summaryWide: { flexDirection: 'row', alignItems: 'center', gap: space.xxl },
+  summaryStats: { flex: 1 },
   bodyWrap: { alignItems: 'center', marginTop: space.lg },
+  mapCaption: { color: c.textFaint, fontSize: 10, marginTop: space.sm },
+  exerciseGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.lg },
 
-  exercise: { padding: space.md, gap: space.xs },
+  exercise: { width: '100%', padding: space.lg, gap: space.sm },
+  exerciseWide: { width: '48%', flexGrow: 1, flexBasis: '46%', maxWidth: '100%' },
   exerciseHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: space.xs },
   exerciseTitle: { flex: 1, color: c.text, fontSize: 15, fontWeight: '700' },
-  setLine: { flexDirection: 'row', alignItems: 'center', gap: space.sm, height: 26 },
+  setLine: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 38, borderBottomWidth: 1, borderBottomColor: c.border },
   setIndex: { color: c.textFaint, fontSize: 12, width: 16 },
   setValue: { color: c.text, fontSize: 14, fontWeight: '600', minWidth: 96 },
   setE1rm: { flex: 1, color: c.textFaint, fontSize: 12, textAlign: 'right' },

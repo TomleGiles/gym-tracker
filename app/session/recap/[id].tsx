@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { RecordCard, WeekCard } from '../../../components/Progress';
@@ -20,6 +20,8 @@ import { c, font, space, type } from '../../../lib/theme';
 export default function SessionRecapScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const wide = width >= 768;
   const recap = useQuery(() => getSessionRecap(id), [id]);
 
   const hasRecords = (recap?.records.length ?? 0) > 0;
@@ -53,19 +55,20 @@ export default function SessionRecapScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
+        <View style={[styles.hero, wide && styles.heroWide]}>
+          <View style={[styles.heroCopy, wide && styles.heroCopyWide]}>
+            <Text style={styles.brand}>ATLAS / BILAN DE SÉANCE</Text>
+            <Text style={[styles.headline, wide && styles.headlineWide]}>DU TRAVAIL.{ '\n' }DU PROGRÈS.</Text>
+            <Text style={styles.headlineSub}>{headline}.</Text>
+            <Text style={styles.kicker}>{summary.routineName} · {sessionNumber}{sessionNumber === 1 ? 're' : 'e'} séance</Text>
+          </View>
           <View style={styles.medal}>
             <GradientFill
-              colors={hasRecords ? ['#FFD66B', '#FF9F2E'] : c.accentGradient}
-              borderRadius={48}
+              colors={hasRecords ? [c.pr, '#E2A83B'] : c.accentGradient}
+              borderRadius={36}
             />
-            <Icon name={hasRecords ? 'trophy' : 'checkmark'} size={44} color="#FFFFFF" />
+            <Icon name={hasRecords ? 'trophy-outline' : 'checkmark'} size={60} color={c.bg} />
           </View>
-          <Text style={styles.kicker}>
-            {sessionNumber}
-            {sessionNumber === 1 ? 're' : 'e'} séance · {summary.routineName}
-          </Text>
-          <Text style={styles.headline}>{headline}</Text>
         </View>
 
         <Card>
@@ -106,12 +109,12 @@ export default function SessionRecapScreen() {
           </>
         ) : null}
 
-        <SectionTitle>Ta semaine</SectionTitle>
+        <SectionTitle>La régularité fait la différence</SectionTitle>
         <WeekCard week={week} streakWeeks={streakWeeks} />
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button label="Terminer" size="lg" icon="checkmark" onPress={() => router.replace('/')} />
+        <Button label="Retour au tableau de bord" size="lg" icon="arrow-forward" onPress={() => router.replace('/')} />
         <Button
           label="Voir le détail des séries"
           variant="ghost"
@@ -124,20 +127,26 @@ export default function SessionRecapScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.bg },
-  content: { padding: space.lg, gap: space.md, paddingBottom: space.xl },
+  content: { width: '100%', maxWidth: 900, alignSelf: 'center', padding: space.xl, gap: space.lg, paddingBottom: space.xl },
 
-  hero: { alignItems: 'center', paddingTop: space.xl, paddingBottom: space.lg },
+  hero: { alignItems: 'center', paddingTop: space.xl, paddingBottom: space.lg, gap: space.xl },
+  heroWide: { flexDirection: 'row', justifyContent: 'space-between', gap: space.xxl, paddingVertical: 40 },
+  heroCopy: { alignItems: 'center', gap: space.md },
+  heroCopyWide: { flex: 1, alignItems: 'flex-start' },
+  brand: { ...type.overline, color: c.accent, letterSpacing: 2, fontSize: 10 },
   medal: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 132,
+    height: 132,
+    borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    marginBottom: space.lg,
+    transform: [{ rotate: '-8deg' }],
   },
-  kicker: { ...type.overline, color: c.textDim },
-  headline: { ...type.hero, fontSize: 40, lineHeight: 44, textAlign: 'center', marginTop: space.sm },
+  kicker: { color: c.textDim, fontSize: 12 },
+  headline: { ...type.hero, fontSize: 52, lineHeight: 50, textAlign: 'center', marginTop: space.sm },
+  headlineWide: { fontSize: 80, lineHeight: 74, textAlign: 'left' },
+  headlineSub: { color: c.text, fontSize: 17, fontWeight: '600', textAlign: 'center' },
 
   statRow: { flexDirection: 'row', gap: space.md },
   deltaRow: {
@@ -155,6 +164,9 @@ const styles = StyleSheet.create({
   recordsRow: { paddingHorizontal: space.lg, gap: space.sm },
 
   footer: {
+    width: '100%',
+    maxWidth: 900,
+    alignSelf: 'center',
     paddingHorizontal: space.lg,
     paddingTop: space.md,
     paddingBottom: space.sm,

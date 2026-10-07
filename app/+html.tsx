@@ -14,12 +14,14 @@ export default function Root({ children }: PropsWithChildren) {
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta
           name="viewport"
-          content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
-        <meta name="theme-color" content="#0B0D10" />
+        <title>ATLAS — Chaque série compte</title>
+        <meta name="description" content="Tes séances, tes records, ta progression. Ton espace d'entraînement personnel, même hors ligne." />
+        <meta name="theme-color" content="#0B0E11" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="Muscu" />
+        <meta name="apple-mobile-web-app-title" content="ATLAS" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icon.png" />
 
@@ -35,7 +37,7 @@ export default function Root({ children }: PropsWithChildren) {
 }
 
 const BASE_STYLE = `
-  html, body { background-color: #0B0D10; }
+  html, body { background-color: #0B0E11; }
   body { overscroll-behavior-y: none; }
   /* En salle, une sélection de texte déclenchée par un appui maintenu est
      toujours une fausse manœuvre — sauf dans les champs de saisie. */

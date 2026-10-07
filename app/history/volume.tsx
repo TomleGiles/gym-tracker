@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { Text } from '../../components/Text';
 import { BodyMap, highlightsFromIntensities } from '../../components/BodyMap/BodyMap';
 import { VolumeBar } from '../../components/ProgressChart';
-import { Card, Chip, EmptyState, Screen, SectionTitle } from '../../components/ui';
+import { Badge, Card, Chip, EmptyState, PageHeader, Screen, SectionTitle } from '../../components/ui';
 import { useQuery } from '../../db/client';
 import { getMuscleVolume, getRegionVolume } from '../../db/queries/stats';
 import { REGION_LABEL } from '../../lib/format';
@@ -31,8 +31,9 @@ export default function VolumeScreen() {
   const regions = useQuery(() => getRegionVolume(days), [days]);
 
   const worked = muscles.filter((m) => m.sets > 0);
+  const weeklyAverage = (sets: number) => sets * 7 / days;
   const highlights = highlightsFromIntensities(
-    muscles.map((m) => ({ muscle: m.muscle, intensity: volumeIntensity(m.sets) })),
+    muscles.map((m) => ({ muscle: m.muscle, intensity: volumeIntensity(weeklyAverage(m.sets)) })),
   );
   const peak = Math.max(...muscles.map((m) => m.sets), WEEKLY_TARGET.high);
   const neglected = muscles.filter((m) => m.sets > 0 && m.sets < WEEKLY_TARGET.low);
@@ -42,6 +43,7 @@ export default function VolumeScreen() {
     <>
       <Stack.Screen options={{ title: 'Volume par muscle' }} />
       <Screen scroll edges={[]}>
+        <PageHeader eyebrow="L'ÉQUILIBRE FAIT LA FORCE" title="Ton effort, muscle par muscle." subtitle="Explore les zones travaillées et visualise la répartition de tes séries." action={<Badge label={`${worked.length} muscles sollicités`} tone="accent" />} />
         <View style={styles.windows}>
           {WINDOWS.map((w) => (
             <Chip key={w.days} label={w.label} active={days === w.days} onPress={() => setDays(w.days)} />
@@ -53,7 +55,7 @@ export default function VolumeScreen() {
             <EmptyState
               icon="body"
               title="Aucune série sur la période"
-              body="Le petit bonhomme se colore dès la première série enregistrée."
+              body="Ta carte musculaire prend vie dès la première série enregistrée."
             />
           </Card>
         ) : (
@@ -63,8 +65,7 @@ export default function VolumeScreen() {
                 <BodyMap highlights={highlights} view="both" size={140} />
               </View>
               <Text style={styles.caption}>
-                Séries pondérées : un muscle principal compte 1, un secondaire 0,5. Repère
-                d'hypertrophie : {WEEKLY_TARGET.low}–{WEEKLY_TARGET.high} séries par semaine.
+                Séries pondérées sur {days} jours : un muscle principal compte 1, un secondaire 0,5.{days === 7 ? ` Repère hebdomadaire : ${WEEKLY_TARGET.low}–${WEEKLY_TARGET.high} séries.` : ' Les couleurs représentent une moyenne hebdomadaire.'}
               </Text>
             </Card>
 
@@ -91,7 +92,7 @@ export default function VolumeScreen() {
                   label={m.muscle.labelFr}
                   sets={m.sets}
                   max={peak}
-                  tone={STATUS_COLOR[volumeStatus(m.sets)]}
+                  tone={STATUS_COLOR[volumeStatus(weeklyAverage(m.sets))]}
                 />
               ))}
             </Card>

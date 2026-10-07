@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Muscu Tracker",
+    "name": "ATLAS",
     "slug": "muscu-tracker",
     "scheme": "muscutracker",
     "version": "1.0.0",
@@ -15,7 +15,7 @@
     "android": {
       "package": "com.muscutracker.app",
       "adaptiveIcon": {
-        "backgroundColor": "#0B0D10",
+        "backgroundColor": "#0B0E11",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -41,7 +41,7 @@
       [
         "expo-notifications",
         {
-          "color": "#FF5A36"
+          "color": "#D7FC70"
         }
       ],
       "expo-sqlite",
