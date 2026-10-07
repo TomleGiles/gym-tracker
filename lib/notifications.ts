@@ -83,3 +83,27 @@ export async function cancelRestEnd(id: string | null): Promise<void> {
     /* idem */
   }
 }
+
+/** Fin d'un cardio lancé au chrono : même canal que le repos, même exigence. */
+export async function scheduleCardioEnd(seconds: number, activityLabel: string): Promise<string | null> {
+  if (seconds <= 0) return null;
+  if (!(await ensurePermission())) return null;
+  try {
+    return await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Cardio terminé',
+        body: `${activityLabel} : c'est dans la boîte.`,
+        sound: 'default',
+        ...(Platform.OS === 'android' ? { channelId: REST_CHANNEL } : {}),
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: Math.round(seconds),
+        channelId: REST_CHANNEL,
+      },
+    });
+  } catch {
+    return null;
+  }
+}
+

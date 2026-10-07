@@ -107,8 +107,12 @@ Le cardio vit dans ses propres tables (`cardio_activity`, `cardio_log`) et ses
 requêtes (`db/queries/cardio.ts`) ; le formatage et les records sont dans
 `lib/cardio.ts`, l'interface dans `components/Cardio.tsx`.
 
-- **Mode séance** : section « Cardio » sous les exercices. Une séance sans série
-  mais avec du cardio se termine normalement au lieu d'être abandonnée.
+- **Mode séance** : section « Cardio » sous les exercices. Par défaut, un
+  **chrono** : durée, vitesse, inclinaison, « Lancer » ; à zéro, le cardio est
+  enregistré seul (distance déduite de la vitesse). Saisie à la main possible.
+  Le chrono est persisté dans `meta.cardio_timer` et remplace la barre de repos
+  en bas de l'écran tant qu'il tourne. Une séance sans série mais avec du
+  cardio se termine normalement au lieu d'être abandonnée.
 - **Bilan, historique** : temps de cardio, activités et records. Une séance
   100 % cardio n'affiche pas « 0 série · 0 kg ».
 - **Bibliothèque** : onglet « Cardio », chaque activité avec ses records.

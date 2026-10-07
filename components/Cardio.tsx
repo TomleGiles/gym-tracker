@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import * as Haptics from 'expo-haptics';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,10 +11,13 @@ import { useQuery } from '../db/client';
 import {
   addCardio,
   deleteCardio,
+  finishCardioTimer,
   getCardioActivityStats,
+  getCardioTimer,
   getLastCardio,
   getSessionCardio,
   listCardioActivities,
+  saveCardioTimer,
   updateCardio,
 } from '../db/queries/cardio';
 import type { CardioEntry, CardioInput } from '../db/queries/cardio';
@@ -25,10 +29,20 @@ import {
   cardioPace,
   cardioSummary,
   distanceInMeters,
+  extendTimer,
+  pauseTimer,
+  resumeTimer,
+  setTimerSpeed,
   speedOf,
+  timerDistance,
+  timerElapsed,
+  timerRemaining,
 } from '../lib/cardio';
+import type { CardioTimer } from '../lib/cardio';
 import { confirmDialog } from '../lib/confirm';
-import { relativeDay } from '../lib/format';
+import { mmss, relativeDay } from '../lib/format';
+import { cancelRestEnd, scheduleCardioEnd } from '../lib/notifications';
+import { useActiveSession } from '../stores/activeSession';
 import { c, font, radius, space, type } from '../lib/theme';
 
 /* ------------------------------------------------------------------ *
@@ -41,6 +55,7 @@ export function CardioSection({ sessionId }: { sessionId: string }) {
   const entries = useQuery(() => getSessionCardio(sessionId), [sessionId]);
   const [editing, setEditing] = useState<Editing | null>(null);
   const total = entries.reduce((sum, e) => sum + e.durationSec, 0);
+  const timer = useCardioTimer(sessionId);
 
   return (
     <View style={styles.section}>
@@ -52,13 +67,20 @@ export function CardioSection({ sessionId }: { sessionId: string }) {
         {total > 0 ? <Badge label={cardioDuration(total)} tone="accent" icon="heart-outline" /> : null}
       </View>
 
+      {timer ? <CardioTimerCard state={timer} /> : null}
+
       {entries.length ? (
         <CardioList entries={entries} onPress={(entry) => setEditing({ mode: 'edit', entry })} />
-      ) : (
-        <Text style={styles.sectionHint}>Tapis, vélo, rameur… Ajoute ton cardio une fois la muscu terminée.</Text>
+      ) : timer ? null : (
+        <Text style={styles.sectionHint}>Tapis, vélo, rameur… Lance un chrono une fois la muscu terminée.</Text>
       )}
 
-      <Button label="Ajouter du cardio" icon="heart-outline" variant="secondary" onPress={() => setEditing({ mode: 'add' })} />
+      <Button
+        label={timer ? 'Ajouter un cardio déjà fait' : 'Ajouter du cardio'}
+        icon="heart-outline"
+        variant="secondary"
+        onPress={() => setEditing({ mode: 'add' })}
+      />
 
       <CardioSheet sessionId={sessionId} editing={editing} onClose={() => setEditing(null)} />
     </View>
@@ -102,6 +124,210 @@ export function CardioList({ entries, onPress }: { entries: CardioEntry[]; onPre
           <View key={entry.id} style={styles.row}>{body}</View>
         );
       })}
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Chrono : la carte dans la section, la barre en bas de l'écran
+ * ------------------------------------------------------------------ */
+
+/** Les machines dont on règle la vitesse : la distance s'en déduit. */
+export const takesSpeed = (a: Pick<CardioActivity, 'setting' | 'pace'>) =>
+  a.setting === 'gym' && (a.pace === 'per_km' || a.pace === 'speed');
+
+type TimerState = {
+  timer: CardioTimer;
+  activity: CardioActivity;
+  now: number;
+  /** Enregistre un nouvel état et reprogramme la notification de fin. */
+  update: (next: CardioTimer) => void;
+  finish: () => void;
+  cancel: () => void;
+};
+
+/**
+ * Le chrono de cette séance, avec l'horloge qui le fait avancer. Quand il
+ * atteint zéro, le cardio est enregistré tout seul : on est sur le tapis,
+ * pas devant l'écran.
+ */
+function useCardioTimer(sessionId: string): TimerState | null {
+  const stored = useQuery(() => getCardioTimer(), []);
+  const activities = useQuery(() => listCardioActivities(), []);
+  const timer = stored?.sessionId === sessionId ? stored : null;
+  const activity = timer ? activities.find((a) => a.id === timer.activityId) ?? null : null;
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!timer || timer.runningSince === null) return;
+    const handle = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(handle);
+  }, [timer]);
+
+  // Fin du chrono, y compris quand on rouvre l'app après l'échéance.
+  const finished = useRef<string | null>(null);
+  useEffect(() => {
+    if (!timer || timer.runningSince === null) return;
+    if (timerRemaining(timer, Date.now()) > 0) return;
+    const key = `${timer.sessionId}:${timer.runningSince}`;
+    if (finished.current === key) return;
+    finished.current = key;
+    finishCardioTimer();
+    if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [timer, now]);
+
+  if (!timer || !activity) return null;
+
+  return {
+    timer,
+    activity,
+    now,
+    update: (next) => commitTimer(timer, next, activity.labelFr),
+    finish: () => {
+      void cancelRestEnd(timer.notificationId);
+      finishCardioTimer();
+    },
+    cancel: () =>
+      confirmDialog('Annuler ce cardio ?', "Le chrono s'arrête et rien n'est enregistré.", 'Annuler le cardio', () => {
+        void cancelRestEnd(timer.notificationId);
+        saveCardioTimer(null);
+      }),
+  };
+}
+
+/** Enregistre l'état du chrono et recale la notification de fin dessus. */
+function commitTimer(previous: CardioTimer | null, next: CardioTimer, label: string) {
+  if (previous) void cancelRestEnd(previous.notificationId);
+  const saved: CardioTimer = { ...next, notificationId: null };
+  saveCardioTimer(saved);
+  if (saved.runningSince === null) return;
+  void scheduleCardioEnd(timerRemaining(saved, Date.now()), label).then((id) => {
+    const current = getCardioTimer();
+    if (current && current.runningSince === saved.runningSince && current.targetSec === saved.targetSec) {
+      saveCardioTimer({ ...current, notificationId: id });
+    } else {
+      void cancelRestEnd(id);
+    }
+  });
+}
+
+/** Lance un chrono neuf. Le repos de muscu en cours n'a plus de raison d'être. */
+export function startCardioTimer(sessionId: string, activity: CardioActivity, targetSec: number, speedKmh: number | null, level: number | null) {
+  useActiveSession.getState().stopRest();
+  commitTimer(getCardioTimer(), {
+    sessionId,
+    activityId: activity.id,
+    targetSec,
+    speedKmh,
+    level,
+    doneSec: 0,
+    doneM: 0,
+    runningSince: Date.now(),
+    notificationId: null,
+  }, activity.labelFr);
+}
+
+function CardioTimerCard({ state }: { state: TimerState }) {
+  const { timer, activity, now, update, finish, cancel } = state;
+  const running = timer.runningSince !== null;
+  const remaining = timerRemaining(timer, now);
+  const progress = Math.min(1, timerElapsed(timer, now) / timer.targetSec);
+  const distance = timerDistance(timer, now);
+  const step = (value: number | null, delta: number) => Math.max(0, Math.round(((value ?? 0) + delta) * 2) / 2);
+
+  return (
+    <View style={styles.timerCard}>
+      <View style={styles.timerHead}>
+        <View style={styles.rowIcon}><Icon name={activity.icon as IconName} size={20} color={c.accent} /></View>
+        <View style={styles.flex}>
+          <Text style={styles.rowTitle} numberOfLines={1}>{activity.labelFr}</Text>
+          <Text style={styles.rowMeta}>{running ? 'En cours' : 'En pause'} · objectif {cardioDuration(timer.targetSec)}</Text>
+        </View>
+        <Pressable accessibilityRole="button" onPress={cancel} hitSlop={8}>
+          <Text style={styles.timerCancel}>Annuler</Text>
+        </Pressable>
+      </View>
+
+      <Text style={[styles.timerClock, font.tabular, !running && { color: c.textDim }]}>{mmss(remaining)}</Text>
+      <View style={styles.timerTrack}><View style={[styles.timerFill, { width: `${progress * 100}%` }]} /></View>
+      <Text style={[styles.timerMeta, font.tabular]}>
+        {[
+          `${mmss(timerElapsed(timer, now))} écoulées`,
+          distance > 0 ? `≈ ${cardioDistance(distance)}` : null,
+        ].filter(Boolean).join(' · ')}
+      </Text>
+
+      {takesSpeed(activity) || activity.levelLabel ? (
+        <View style={styles.inline}>
+          {takesSpeed(activity) ? (
+            <Stepper
+              label="Vitesse"
+              value={timer.speedKmh ? `${formatFr(timer.speedKmh)} km/h` : '—'}
+              onMinus={() => update(setTimerSpeed(timer, step(timer.speedKmh, -0.5) || null, Date.now()))}
+              onPlus={() => update(setTimerSpeed(timer, step(timer.speedKmh, 0.5), Date.now()))}
+            />
+          ) : null}
+          {activity.levelLabel ? (
+            <Stepper
+              label={activity.levelLabel.replace(/ \(.*\)/, '')}
+              value={timer.level !== null ? formatFr(timer.level) : '—'}
+              onMinus={() => update({ ...timer, level: step(timer.level, -0.5) })}
+              onPlus={() => update({ ...timer, level: step(timer.level, 0.5) })}
+            />
+          ) : null}
+        </View>
+      ) : null}
+
+      <View style={styles.inline}>
+        <View style={styles.flex}>
+          <Button
+            label={running ? 'Pause' : 'Reprendre'}
+            icon={running ? 'pause' : 'play'}
+            variant="secondary"
+            onPress={() => update(running ? pauseTimer(timer, Date.now()) : resumeTimer(timer, Date.now()))}
+          />
+        </View>
+        <View style={styles.flex}>
+          <Button label="+5 min" icon="add" variant="secondary" onPress={() => update(extendTimer(timer, 300))} />
+        </View>
+      </View>
+      <Button label="Terminer et enregistrer" icon="checkmark" onPress={finish} />
+    </View>
+  );
+}
+
+function Stepper({ label, value, onMinus, onPlus }: { label: string; value: string; onMinus: () => void; onPlus: () => void }) {
+  return (
+    <View style={styles.stepper}>
+      <IconButton name="remove" accessibilityLabel={`${label} moins`} color={c.text} onPress={onMinus} />
+      <View style={styles.stepperText}>
+        <Text style={[type.overline, { fontSize: 9 }]}>{label.toUpperCase()}</Text>
+        <Text style={[styles.stepperValue, font.tabular]} numberOfLines={1}>{value}</Text>
+      </View>
+      <IconButton name="add" accessibilityLabel={`${label} plus`} color={c.text} onPress={onPlus} />
+    </View>
+  );
+}
+
+/** Rappel compact en bas de l'écran de séance, à la place du chrono de repos. */
+export function CardioTimerBar({ sessionId }: { sessionId: string }) {
+  const state = useCardioTimer(sessionId);
+  if (!state) return null;
+  const { timer, activity, now, update } = state;
+  const running = timer.runningSince !== null;
+  return (
+    <View style={styles.bar}>
+      <Icon name={activity.icon as IconName} size={20} color={c.accent} />
+      <View style={styles.flex}>
+        <Text style={[styles.barClock, font.tabular]}>{mmss(timerRemaining(timer, now))}</Text>
+        <Text style={styles.rowMeta} numberOfLines={1}>{activity.labelFr}{running ? '' : ' · en pause'}</Text>
+      </View>
+      <IconButton
+        name={running ? 'pause' : 'play'}
+        accessibilityLabel={running ? 'Mettre le cardio en pause' : 'Reprendre le cardio'}
+        color={c.text}
+        onPress={() => update(running ? pauseTimer(timer, Date.now()) : resumeTimer(timer, Date.now()))}
+      />
     </View>
   );
 }
@@ -161,9 +387,9 @@ function LibraryRecord({ label, value }: { label: string; value: string }) {
  * Feuille de saisie : choix de l'activité, puis le formulaire
  * ------------------------------------------------------------------ */
 
-type Draft = { min: string; sec: string; distance: string; calories: string; level: string };
+type Draft = { min: string; sec: string; distance: string; calories: string; level: string; speed: string };
 
-const EMPTY: Draft = { min: '', sec: '', distance: '', calories: '', level: '' };
+const EMPTY: Draft = { min: '', sec: '', distance: '', calories: '', level: '', speed: '' };
 
 function draftFrom(log: CardioLog | null, activity: CardioActivity): Draft {
   if (!log) return EMPTY;
@@ -174,6 +400,8 @@ function draftFrom(log: CardioLog | null, activity: CardioActivity): Draft {
     distance: log.distanceM ? (meters ? String(Math.round(log.distanceM)) : formatFr(log.distanceM / 1000)) : '',
     calories: log.calories ? String(log.calories) : '',
     level: log.level !== null ? formatFr(log.level) : '',
+    // La vitesse n'est pas stockée : elle se retrouve depuis distance et durée.
+    speed: takesSpeed(activity) && speedOf(log) ? formatFr(Math.round((speedOf(log) ?? 0) * 3.6 * 2) / 2) : '',
   };
 }
 
@@ -193,6 +421,9 @@ function CardioSheet({ sessionId, editing, onClose }: { sessionId: string; editi
   const [activity, setActivity] = useState<CardioActivity | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [error, setError] = useState<string | null>(null);
+  /** Saisie à la main d'un cardio déjà fait, plutôt que le chrono. */
+  const [manual, setManual] = useState(false);
+  const timerRunning = useQuery(() => getCardioTimer() !== null, []);
 
   const last = useMemo(
     () => (activity && editing?.mode === 'add' ? getLastCardio(activity.id, sessionId) : null),
@@ -202,6 +433,7 @@ function CardioSheet({ sessionId, editing, onClose }: { sessionId: string; editi
   // Chaque ouverture repart de zéro ; une modification arrive pré-remplie.
   useEffect(() => {
     setError(null);
+    setManual(editing?.mode === 'edit' || getCardioTimer() !== null);
     if (editing?.mode === 'edit') {
       setActivity(editing.entry.activity);
       setDraft(draftFrom(editing.entry, editing.entry.activity));
@@ -214,7 +446,26 @@ function CardioSheet({ sessionId, editing, onClose }: { sessionId: string; editi
   function pick(a: CardioActivity) {
     setActivity(a);
     // Comme pour la muscu : la dernière fois est déjà saisie, on ajuste.
-    setDraft(draftFrom(getLastCardio(a.id, sessionId), a));
+    const next = draftFrom(getLastCardio(a.id, sessionId), a);
+    setDraft(next.min ? next : { ...next, min: '30' });
+  }
+
+  function launch() {
+    if (!activity) return;
+    const minutes = parseFr(draft.min);
+    if (minutes <= 0) {
+      setError('Indique une durée.');
+      return;
+    }
+    const speed = parseFr(draft.speed);
+    startCardioTimer(
+      sessionId,
+      activity,
+      Math.round(minutes * 60),
+      takesSpeed(activity) && speed > 0 ? speed : null,
+      activity.levelLabel && draft.level.trim() ? parseFr(draft.level) : null,
+    );
+    onClose();
   }
 
   function save() {
@@ -283,6 +534,44 @@ function CardioSheet({ sessionId, editing, onClose }: { sessionId: string; editi
                   </View>
                 </View>
               ))
+            ) : !manual ? (
+              <View style={styles.form}>
+                <View style={styles.inline}>
+                  <View style={styles.flex}>
+                    <Field label="Durée">
+                      <View style={styles.inline}>
+                        <Input value={draft.min} onChangeText={(min) => patch({ min })} keyboardType="number-pad" placeholder="30" style={styles.flex} accessibilityLabel="Durée en minutes" />
+                        <Text style={styles.unit}>min</Text>
+                      </View>
+                    </Field>
+                  </View>
+                  {takesSpeed(activity) ? (
+                    <View style={styles.flex}>
+                      <Field label="Vitesse">
+                        <View style={styles.inline}>
+                          <Input value={draft.speed} onChangeText={(speed) => patch({ speed })} keyboardType="decimal-pad" placeholder="10" style={styles.flex} accessibilityLabel="Vitesse en km/h" />
+                          <Text style={styles.unit}>km/h</Text>
+                        </View>
+                      </Field>
+                    </View>
+                  ) : null}
+                </View>
+                {activity.levelLabel ? (
+                  <Field label={activity.levelLabel}>
+                    <Input value={draft.level} onChangeText={(level) => patch({ level })} keyboardType="decimal-pad" placeholder="Facultatif" accessibilityLabel={activity.levelLabel} />
+                  </Field>
+                ) : null}
+                <Text style={styles.sectionHint}>
+                  Le chrono démarre tout de suite. À la fin, le cardio est enregistré tout seul{takesSpeed(activity) ? ', avec la distance déduite de ta vitesse' : ''}.
+                </Text>
+
+                {error ? <Text style={styles.error}>{error}</Text> : null}
+
+                <Button label={`Lancer · ${draft.min || '0'} min`} icon="play" size="lg" onPress={launch} />
+                <Pressable accessibilityRole="button" onPress={() => setManual(true)}>
+                  <Text style={styles.modeLink}>Déjà fait ? Saisir à la main</Text>
+                </Pressable>
+              </View>
             ) : (
               <View style={styles.form}>
                 {last ? (
@@ -332,6 +621,10 @@ function CardioSheet({ sessionId, editing, onClose }: { sessionId: string; editi
                 <Button label={editing?.mode === 'edit' ? 'Enregistrer' : 'Ajouter'} icon="checkmark" size="lg" onPress={save} />
                 {editing?.mode === 'edit' ? (
                   <Button label="Supprimer" icon="trash-outline" variant="danger" onPress={remove} />
+                ) : !timerRunning ? (
+                  <Pressable accessibilityRole="button" onPress={() => setManual(false)}>
+                    <Text style={styles.modeLink}>Lancer un chrono plutôt</Text>
+                  </Pressable>
                 ) : null}
               </View>
             )}
@@ -357,6 +650,20 @@ const styles = StyleSheet.create({
   rowMeta: { color: c.textDim, fontSize: 12, marginTop: 3 },
   rowLevel: { color: c.textFaint, fontSize: 11 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+
+  timerCard: { gap: space.md, padding: space.lg, borderRadius: radius.xl, backgroundColor: c.surface, borderWidth: 1, borderColor: c.accent },
+  timerHead: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  timerCancel: { color: c.textFaint, fontSize: 12, textDecorationLine: 'underline' },
+  timerClock: { ...font.display, fontSize: 72, lineHeight: 76, color: c.text, textAlign: 'center' },
+  timerTrack: { height: 6, borderRadius: radius.pill, backgroundColor: c.surfaceHigh, overflow: 'hidden' },
+  timerFill: { height: 6, borderRadius: radius.pill, backgroundColor: c.accent },
+  timerMeta: { color: c.textDim, fontSize: 12, textAlign: 'center' },
+  stepper: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: c.surfaceAlt, borderRadius: radius.lg, paddingHorizontal: 4 },
+  stepperText: { flex: 1, alignItems: 'center', minWidth: 0 },
+  stepperValue: { ...font.display, fontSize: 22, color: c.text },
+  bar: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.sm, borderRadius: radius.lg, backgroundColor: c.surface, borderWidth: 1, borderColor: c.accent },
+  barClock: { ...font.display, fontSize: 26, lineHeight: 28, color: c.text },
+  modeLink: { color: c.textDim, fontSize: 13, textAlign: 'center', textDecorationLine: 'underline', paddingVertical: space.sm },
 
   libraryGroups: { gap: space.xl },
   libraryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md },

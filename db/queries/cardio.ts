@@ -1,10 +1,10 @@
 import { and, asc, desc, eq, inArray, isNull, max, ne } from 'drizzle-orm';
 
-import { cardioRecords, speedOf } from '../../lib/cardio';
-import type { CardioRecordKind } from '../../lib/cardio';
+import { cardioRecords, speedOf, timerDistance, timerElapsed } from '../../lib/cardio';
+import type { CardioRecordKind, CardioTimer } from '../../lib/cardio';
 import { nowIso, uuidv7 } from '../../lib/id';
 import { bumpRevision, db } from '../client';
-import { cardioActivity, cardioLog, session } from '../schema';
+import { cardioActivity, cardioLog, meta, session } from '../schema';
 import type { CardioActivity, CardioLog } from '../schema';
 import { queueOp } from './sync';
 
@@ -188,3 +188,53 @@ export function getCardioActivityStats(): CardioActivityStats[] {
     };
   });
 }
+
+/* ------------------------------------------------------------------ *
+ * Chrono de cardio
+ * ------------------------------------------------------------------ */
+
+/**
+ * Le chrono en cours, rangé dans `meta` : un état d'appareil, pas une donnée
+ * synchronisée. En base plutôt qu'en mémoire, parce qu'un cardio de 30 min
+ * doit survivre à un rechargement de la page ou à un kill de l'app.
+ */
+const TIMER_KEY = 'cardio_timer';
+
+export function getCardioTimer(): CardioTimer | null {
+  const row = db.select().from(meta).where(eq(meta.key, TIMER_KEY)).get();
+  if (!row) return null;
+  try {
+    return JSON.parse(row.value) as CardioTimer;
+  } catch {
+    return null;
+  }
+}
+
+export function saveCardioTimer(timer: CardioTimer | null): void {
+  if (!timer) {
+    db.delete(meta).where(eq(meta.key, TIMER_KEY)).run();
+  } else {
+    const value = JSON.stringify(timer);
+    db.insert(meta).values({ key: TIMER_KEY, value }).onConflictDoUpdate({ target: meta.key, set: { value } }).run();
+  }
+  bumpRevision();
+}
+
+/**
+ * Arrête le chrono et enregistre le cardio fait jusque-là. Rien n'est
+ * enregistré sous 10 s : c'est un faux départ, pas une activité.
+ */
+export function finishCardioTimer(now = Date.now()): string | null {
+  const timer = getCardioTimer();
+  if (!timer) return null;
+  const durationSec = Math.round(timerElapsed(timer, now));
+  const distanceM = timerDistance(timer, now);
+  saveCardioTimer(null);
+  if (durationSec < 10) return null;
+  return addCardio(timer.sessionId, timer.activityId, {
+    durationSec,
+    distanceM: distanceM > 0 ? Math.round(distanceM) : null,
+    level: timer.level,
+  });
+}
+

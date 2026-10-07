@@ -446,6 +446,20 @@ rameur et le SkiErg, km sinon), calories et niveau facultatifs. La dernière
 fois sur l'activité pré-remplit le formulaire, comme pour la muscu. L'allure
 s'affiche au fil de la saisie : min/km, min/500 m ou km/h selon l'activité.
 
+### Chrono
+
+Le geste par défaut : choisir l'activité, régler la durée (30 min), la vitesse
+(tapis, vélo d'appartement, elliptique) et l'inclinaison ou le niveau, puis
+« Lancer ». Un compte à rebours tourne ; pause, +5 min, vitesse et inclinaison
+ajustables en cours de route. À zéro, l'activité s'enregistre seule : durée,
+distance déduite de la vitesse (segment par segment si elle a changé),
+inclinaison. Une notification locale sonne à la fin, écran verrouillé.
+
+Le chrono vit dans `meta` (clé `cardio_timer`) et se calcule depuis des heures
+de départ, pas un décompte : il survit à un rechargement et reste juste après
+une mise en veille. La saisie à la main reste disponible pour un cardio déjà
+fait.
+
 ### Records
 
 Par activité : plus longue durée, plus longue distance, meilleure allure (plus

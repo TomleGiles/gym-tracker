@@ -87,3 +87,61 @@ export function cardioRecords(
   }
   return out;
 }
+
+/* ------------------------------------------------------------------ *
+ * Chrono de cardio
+ * ------------------------------------------------------------------ */
+
+/**
+ * Un cardio lancé au chrono. On stocke des segments, pas un décompte : le
+ * temps écoulé se recalcule depuis `runningSince`, donc le chrono reste juste
+ * après une mise en veille ou un rechargement. Changer de vitesse referme le
+ * segment en cours pour que la distance estimée suive la bonne allure.
+ */
+export type CardioTimer = {
+  sessionId: string;
+  activityId: string;
+  targetSec: number;
+  /** km/h affichés par la machine. NULL = pas de distance estimée. */
+  speedKmh: number | null;
+  level: number | null;
+  /** Temps et distance des segments déjà refermés. */
+  doneSec: number;
+  doneM: number;
+  /** Epoch ms du début du segment en cours ; NULL = en pause. */
+  runningSince: number | null;
+  notificationId: string | null;
+};
+
+/** Secondes écoulées, plafonnées à la cible. */
+export function timerElapsed(t: CardioTimer, now: number): number {
+  const live = t.runningSince === null ? 0 : (now - t.runningSince) / 1000;
+  return Math.min(t.targetSec, t.doneSec + Math.max(0, live));
+}
+
+/** Distance estimée d'après la vitesse saisie, en mètres. */
+export function timerDistance(t: CardioTimer, now: number): number {
+  if (t.runningSince === null || !t.speedKmh) return t.doneM;
+  return t.doneM + ((timerElapsed(t, now) - t.doneSec) * t.speedKmh) / 3.6;
+}
+
+/** Referme le segment en cours : le point de départ de toute modification. */
+function closeSegment(t: CardioTimer, now: number): CardioTimer {
+  return { ...t, doneSec: timerElapsed(t, now), doneM: timerDistance(t, now), runningSince: null };
+}
+
+export const pauseTimer = (t: CardioTimer, now: number): CardioTimer => closeSegment(t, now);
+
+export const resumeTimer = (t: CardioTimer, now: number): CardioTimer =>
+  t.runningSince === null ? { ...t, runningSince: now } : t;
+
+export function setTimerSpeed(t: CardioTimer, speedKmh: number | null, now: number): CardioTimer {
+  const running = t.runningSince !== null;
+  const closed = closeSegment(t, now);
+  return { ...closed, speedKmh, runningSince: running ? now : null };
+}
+
+export const extendTimer = (t: CardioTimer, seconds: number): CardioTimer => ({ ...t, targetSec: t.targetSec + seconds });
+
+/** Secondes jusqu'à la fin si le chrono tourne, pour la notification. */
+export const timerRemaining = (t: CardioTimer, now: number): number => Math.max(0, t.targetSec - timerElapsed(t, now));

@@ -5,7 +5,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text } from '../../components/Text';
-import { CardioSection } from '../../components/Cardio';
+import { CardioSection, CardioTimerBar } from '../../components/Cardio';
 import { ExercisePicker } from '../../components/ExercisePicker';
 import { NumPad, formatFr, parseFr } from '../../components/NumPad';
 import type { NumPadRequest } from '../../components/NumPad';
@@ -13,7 +13,7 @@ import { RestTimer } from '../../components/RestTimer';
 import { SetRow, setRowStyles } from '../../components/SetRow';
 import { Badge, Button, EmptyState, Icon, IconButton, Loading, ProgressRing } from '../../components/ui';
 import { useQuery } from '../../db/client';
-import { getSessionCardio } from '../../db/queries/cardio';
+import { finishCardioTimer, getCardioTimer, getSessionCardio, saveCardioTimer } from '../../db/queries/cardio';
 import {
   addExerciseToSession,
   deleteSet,
@@ -43,6 +43,7 @@ export default function SessionScreen() {
   const view = useQuery(() => getSessionView(id), [id]);
   const cardio = useQuery(() => getSessionCardio(id), [id]);
   const cardioSec = cardio.reduce((sum, e) => sum + e.durationSec, 0);
+  const cardioRunning = useQuery(() => getCardioTimer()?.sessionId === id, [id]);
 
   const expandedSlotId = useActiveSession((s) => s.expandedSlotId);
   const expand = useActiveSession((s) => s.expand);
@@ -87,6 +88,8 @@ export default function SessionScreen() {
   }, [view]);
 
   const finish = useCallback(() => {
+    // Terminer la séance pendant le cardio enregistre ce qui a été fait.
+    if (cardioRunning) finishCardioTimer();
     const close = () => {
       endSession(id);
       stopRest();
@@ -94,7 +97,7 @@ export default function SessionScreen() {
       router.replace(`/session/recap/${id}`);
     };
     // Une séance 100 % cardio est une vraie séance : seule une séance vide part.
-    if (totals.sets === 0 && cardio.length === 0) {
+    if (totals.sets === 0 && cardio.length === 0 && !cardioRunning) {
       confirmDialog(
         'Terminer sans aucune série ?',
         'La séance sera supprimée.',
@@ -109,7 +112,7 @@ export default function SessionScreen() {
       return;
     }
     close();
-  }, [id, router, stopRest, resetSessionUi, totals.sets, cardio.length]);
+  }, [id, router, stopRest, resetSessionUi, totals.sets, cardio.length, cardioRunning]);
 
   const targetSets = view.reduce((sum, entry) => sum + entry.targetSets, 0);
   const completedTargetSets = view.reduce((sum, entry) => sum + Math.min(entry.today.length, entry.targetSets), 0);
@@ -195,6 +198,7 @@ export default function SessionScreen() {
         <CardioSection sessionId={id} />
 
         <Pressable accessibilityRole="button" onPress={() => confirmDiscard(id, () => {
+          if (getCardioTimer()?.sessionId === id) saveCardioTimer(null);
           discardSession(id);
           stopRest();
           resetSessionUi();
@@ -229,7 +233,7 @@ export default function SessionScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <RestTimer />
+        {cardioRunning ? <CardioTimerBar sessionId={id} /> : <RestTimer />}
       </View>
 
       {prFlash ? (
