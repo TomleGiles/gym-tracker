@@ -21,6 +21,9 @@ export default function SessionHistoryScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const wide = width >= 850;
+  // Sur téléphone, les 5 stats passent sur deux lignes : une grille à 3 colonnes
+  // garde la deuxième alignée sur la première au lieu de l'étirer.
+  const cell = width < 500 ? styles.statCell : undefined;
   const detail = useQuery(() => getSessionDetail(id), [id]);
   const cardio = useQuery(() => getSessionCardio(id), [id]);
 
@@ -62,18 +65,20 @@ export default function SessionHistoryScreen() {
 
         <Card style={wide && styles.summaryWide}>
           <View style={[styles.statRow, wide && styles.summaryStats]}>
-            <Stat value={String(summary.setCount)} label="Séries" />
-            <Stat value={tonnageLabel(summary.tonnage)} label="Tonnage" />
+            <Stat value={String(summary.setCount)} label="Séries" style={cell} />
+            <Stat value={tonnageLabel(summary.tonnage)} label="Tonnage" style={cell} />
             <Stat
               value={summary.durationMin !== null ? duration(summary.durationMin) : '—'}
               label="Durée"
+              style={cell}
             />
             <Stat
               value={String(summary.prCount)}
               label="Records"
               tone={summary.prCount ? 'pr' : 'default'}
+              style={cell}
             />
-            {summary.cardioSec > 0 ? <Stat value={cardioDuration(summary.cardioSec)} label="Cardio" tone="accent" /> : null}
+            {summary.cardioSec > 0 ? <Stat value={cardioDuration(summary.cardioSec)} label="Cardio" tone="accent" style={cell} /> : null}
           </View>
           {exercises.length ? (
             <View style={styles.bodyWrap}>
@@ -145,11 +150,12 @@ const styles = StyleSheet.create({
   title: { ...font.display, color: c.text, fontSize: 40, lineHeight: 44 },
   date: { color: c.textDim, fontSize: 14, textTransform: 'capitalize' },
 
-  statRow: { flexDirection: 'row', gap: space.md },
+  statRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md, rowGap: space.lg },
+  statCell: { flexGrow: 0, flexBasis: '30%' },
   summaryWide: { flexDirection: 'row', alignItems: 'center', gap: space.xxl },
   summaryStats: { flex: 1 },
   bodyWrap: { alignItems: 'center', marginTop: space.lg },
-  mapCaption: { color: c.textFaint, fontSize: 10, marginTop: space.sm },
+  mapCaption: { color: c.textFaint, fontSize: 12, marginTop: space.sm },
   exerciseGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.lg },
 
   exercise: { width: '100%', padding: space.lg, gap: space.sm },

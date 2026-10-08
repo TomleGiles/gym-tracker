@@ -230,18 +230,24 @@ export const exerciseStats = sqliteTable('exercise_stats', {
 });
 
 /* ------------------------------------------------------------------ *
- * Compte — local tant que la sync n'existe pas : un seul compte par
- * appareil, et toutes les données de cet appareil lui appartiennent.
- * Le jour du serveur (et du partage de séances), l'id UUID v7 devient
- * l'identifiant distant sans migration.
+ * Compte — le compte Supabase de la personne connectée sur cet appareil.
+ * Les données locales lui appartiennent toutes : se connecter avec un
+ * autre compte vide d'abord la base (voir db/queries/auth.ts).
  * ------------------------------------------------------------------ */
 
 export const user = sqliteTable('user', {
   id: text('id').primaryKey(),
   email: text('email').notNull().unique(), // toujours en minuscules
   displayName: text('display_name').notNull(),
-  passwordHash: text('password_hash').notNull(),
-  passwordSalt: text('password_salt').notNull(),
+  /** `auth.uid()` Supabase. NULL = compte local d'avant le lot S0, pas encore passé en ligne. */
+  remoteId: text('remote_id').unique(),
+  /**
+   * Hash du mot de passe des comptes locaux d'avant S0 : il sert une seule
+   * fois, à vérifier leur mot de passe au moment de les passer en ligne.
+   * NULL pour un compte créé en ligne.
+   */
+  passwordHash: text('password_hash'),
+  passwordSalt: text('password_salt'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   deletedAt: text('deleted_at'),
@@ -256,7 +262,11 @@ export const meta = sqliteTable('meta', {
   value: text('value').notNull(),
 });
 
-/** File d'attente de sync (V2). Alimentée dès la V1 pour éviter la migration. */
+/**
+ * Journal des mutations. Il sert de signal « il y a quelque chose à envoyer »
+ * et se vide à chaque envoi réussi ; le contenu envoyé, lui, est relu dans les
+ * tables (voir db/queries/cloud.ts).
+ */
 export const syncQueue = sqliteTable(
   'sync_queue',
   {
@@ -299,7 +309,7 @@ export type CardioActivity = typeof cardioActivity.$inferSelect;
 export type CardioLog = typeof cardioLog.$inferSelect;
 export type User = typeof user.$inferSelect;
 /** Ce que l'UI connaît du compte : jamais le hash. */
-export type Account = Pick<User, 'id' | 'email' | 'displayName' | 'createdAt'>;
+export type Account = Pick<User, 'id' | 'email' | 'displayName' | 'remoteId' | 'createdAt'>;
 
 /** Un exercice avec ses muscles résolus — la forme utilisée par l'UI. */
 export type ExerciseWithMuscles = Exercise & {

@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   trendLabel: { fontSize: 12, fontWeight: '700' },
 
   chartTitle: { color: c.textDim, fontSize: 13, fontWeight: '600', marginBottom: space.sm },
-  statRow: { flexDirection: 'row', gap: space.md },
+  statRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md, rowGap: space.lg },
   bestSet: { color: c.text, fontSize: 14, marginTop: space.lg, fontWeight: '600' },
   footNote: { color: c.textFaint, fontSize: 12, marginTop: space.xs },
 

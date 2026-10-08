@@ -22,6 +22,20 @@
       "when": 1791383759038,
       "tag": "0002_soft_kang",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1791451557829,
+      "tag": "0003_add_remote_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1791451570596,
+      "tag": "0004_optional_local_password",
+      "breakpoints": true
     }
   ]
 }

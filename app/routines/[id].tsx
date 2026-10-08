@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { Text } from '../../components/Text';
 import { BodyMap, highlightsFromIntensities } from '../../components/BodyMap/BodyMap';
@@ -32,7 +32,7 @@ import {
 import { startSession } from '../../db/queries/sessions';
 import type { Muscle } from '../../db/schema';
 import { EQUIPMENT_LABEL, plural } from '../../lib/format';
-import { c, font, radius, space } from '../../lib/theme';
+import { HIT, c, font, radius, space } from '../../lib/theme';
 import { ROLE_WEIGHT } from '../../lib/volume';
 import { useActiveSession } from '../../stores/activeSession';
 
@@ -40,6 +40,7 @@ export default function RoutineEditScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const resetSessionUi = useActiveSession((s) => s.reset);
+  const narrow = useWindowDimensions().width < 500;
 
   const routine = useQuery(() => getRoutine(id), [id]);
   const [picking, setPicking] = useState(false);
@@ -135,7 +136,7 @@ export default function RoutineEditScreen() {
                 >
                   <View style={styles.nameRow}>
                     <View style={[styles.dot, { backgroundColor: routine.color ?? c.textFaint }]} />
-                    <Text style={styles.name}>{routine.name}</Text>
+                    <Text style={[styles.name, narrow && styles.nameNarrow]}>{routine.name}</Text>
                     <Icon name="pencil" size={14} color={c.textFaint} />
                   </View>
                 </Pressable>
@@ -144,7 +145,7 @@ export default function RoutineEditScreen() {
                 {plural(routine.items.length, 'exercice')} · {plural(totalSets, 'série')} au programme
               </Text>
             </View>
-            <BodyMap highlights={highlights} view="both" size={80} />
+            <BodyMap highlights={highlights} view="both" size={narrow ? 60 : 80} />
           </View>
 
           <View style={styles.colorRow}>
@@ -214,8 +215,15 @@ export default function RoutineEditScreen() {
                     onPress={() => moveRoutineItem(id, item.id, 1)}
                   />
                 </View>
+                <IconButton
+                  name="trash-outline"
+                  accessibilityLabel="Retirer de la séance"
+                  color={c.danger}
+                  onPress={() => removeRoutineItem(item.id)}
+                />
               </View>
 
+              {/* Les deux compteurs d'abord : sur téléphone ils partagent une ligne et les reps passent dessous. */}
               <View style={styles.targets}>
                 <Stepper
                   label="Séries"
@@ -227,17 +235,6 @@ export default function RoutineEditScreen() {
                     updateRoutineItem(item.id, { targetSets: Math.min(12, item.targetSets + 1) })
                   }
                 />
-                <View style={styles.repsField}>
-                  <Text style={styles.stepperLabel}>Reps</Text>
-                  <Input
-                    defaultValue={item.targetReps ?? ''}
-                    placeholder="8-10"
-                    onEndEditing={(e) =>
-                      updateRoutineItem(item.id, { targetReps: e.nativeEvent.text.trim() || null })
-                    }
-                    style={styles.repsInput}
-                  />
-                </View>
                 <Stepper
                   label="Repos"
                   value={`${item.restSeconds ?? 120}s`}
@@ -252,12 +249,17 @@ export default function RoutineEditScreen() {
                     })
                   }
                 />
-                <IconButton
-                  name="trash-outline"
-                  accessibilityLabel="Retirer de la séance"
-                  color={c.danger}
-                  onPress={() => removeRoutineItem(item.id)}
-                />
+                <View style={styles.repsField}>
+                  <Text style={styles.stepperLabel}>Reps</Text>
+                  <Input
+                    defaultValue={item.targetReps ?? ''}
+                    placeholder="8-10"
+                    onEndEditing={(e) =>
+                      updateRoutineItem(item.id, { targetReps: e.nativeEvent.text.trim() || null })
+                    }
+                    style={styles.repsInput}
+                  />
+                </View>
               </View>
             </Card>
           ))
@@ -320,6 +322,7 @@ const styles = StyleSheet.create({
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   dot: { width: 10, height: 10, borderRadius: 5 },
   name: { ...font.display, flexShrink: 1, color: c.text, fontSize: 36 },
+  nameNarrow: { fontSize: 30 },
   meta: { color: c.textDim, fontSize: 13 },
   colorRow: { flexDirection: 'row', gap: space.sm, marginTop: space.lg },
   swatch: { width: 28, height: 28, borderRadius: radius.pill, borderWidth: 2, borderColor: 'transparent' },
@@ -341,15 +344,16 @@ const styles = StyleSheet.create({
   moveBtn: { height: 28, width: 36 },
 
   targets: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: space.md, paddingTop: space.md, borderTopWidth: 1, borderTopColor: c.border },
-  stepper: { gap: 2 },
-  stepperLabel: { color: c.textFaint, fontSize: 11, fontWeight: '600' },
+  stepper: { flexGrow: 1, gap: 4 },
+  stepperLabel: { color: c.textFaint, fontSize: 12, fontWeight: '600' },
   stepperRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: c.surfaceAlt,
     borderRadius: radius.md,
   },
-  stepperValue: { color: c.text, fontSize: 14, fontWeight: '700', minWidth: 34, textAlign: 'center' },
-  repsField: { flexGrow: 1, minWidth: 70, gap: 2 },
-  repsInput: { minHeight: 40, textAlign: 'center', fontSize: 14 },
+  stepperValue: { color: c.text, fontSize: 15, fontWeight: '700', minWidth: 34, textAlign: 'center' },
+  repsField: { flexGrow: 1, minWidth: 120, gap: 4 },
+  repsInput: { minHeight: HIT, textAlign: 'center', fontSize: 15 },
 });

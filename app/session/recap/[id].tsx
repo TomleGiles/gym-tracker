@@ -10,6 +10,7 @@ import { Text } from '../../../components/Text';
 import { Badge, Button, Card, GradientFill, Icon, Loading, SectionTitle, Stat } from '../../../components/ui';
 import { useQuery } from '../../../db/client';
 import { getSessionCardio } from '../../../db/queries/cardio';
+import { syncNow } from '../../../db/queries/cloud';
 import { getSessionRecap } from '../../../db/queries/engagement';
 import { cardioDistance, cardioDuration } from '../../../lib/cardio';
 import { duration, plural, tonnageLabel } from '../../../lib/format';
@@ -25,12 +26,18 @@ export default function SessionRecapScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const wide = width >= 768;
+  // Sur téléphone, grille à 2 colonnes : avec 3 stats, la dernière ne s'étire pas sur toute la largeur.
+  const cell = width < 500 ? styles.statCell : undefined;
   const recap = useQuery(() => getSessionRecap(id), [id]);
   const cardio = useQuery(() => getSessionCardio(id), [id]);
   const cardioRecords = cardio.reduce((n, e) => n + e.records.length, 0);
   const cardioMeters = cardio.reduce((m, e) => m + (e.distanceM ?? 0), 0);
 
   const hasRecords = (recap?.records.length ?? 0) > 0 || cardioRecords > 0;
+  // Fin de séance = le moment où il y a le plus à sauvegarder (§3 du spec social).
+  useEffect(() => {
+    void syncNow();
+  }, []);
   useEffect(() => {
     if (Platform.OS === 'web' || !recap) return;
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -84,17 +91,18 @@ export default function SessionRecapScreen() {
               size="lg"
               value={summary.durationMin !== null ? duration(summary.durationMin) : '—'}
               label="Durée"
+              style={cell}
             />
             {/* Une séance 100 % cardio n'a pas à afficher « 0 série · 0 kg ». */}
             {summary.setCount > 0 ? (
               <>
-                <Stat size="lg" value={String(summary.setCount)} label="Séries" />
-                <Stat size="lg" value={tonnageLabel(summary.tonnage)} label="Tonnage" />
+                <Stat size="lg" value={String(summary.setCount)} label="Séries" style={cell} />
+                <Stat size="lg" value={tonnageLabel(summary.tonnage)} label="Tonnage" style={cell} />
               </>
             ) : cardioMeters > 0 ? (
-              <Stat size="lg" value={cardioDistance(cardioMeters)} label="Distance" />
+              <Stat size="lg" value={cardioDistance(cardioMeters)} label="Distance" style={cell} />
             ) : null}
-            {summary.cardioSec > 0 ? <Stat size="lg" value={cardioDuration(summary.cardioSec)} label="Cardio" tone="accent" /> : null}
+            {summary.cardioSec > 0 ? <Stat size="lg" value={cardioDuration(summary.cardioSec)} label="Cardio" tone="accent" style={cell} /> : null}
           </View>
           {deltaPct !== null ? (
             <View style={styles.deltaRow}>
@@ -174,7 +182,8 @@ const styles = StyleSheet.create({
   headlineWide: { fontSize: 80, lineHeight: 74, textAlign: 'left' },
   headlineSub: { color: c.text, fontSize: 17, fontWeight: '600', textAlign: 'center' },
 
-  statRow: { flexDirection: 'row', gap: space.md },
+  statRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md, rowGap: space.lg },
+  statCell: { flexGrow: 0, flexBasis: '46%' },
   deltaRow: {
     flexDirection: 'row',
     alignItems: 'center',

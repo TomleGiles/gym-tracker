@@ -10,8 +10,16 @@ export const DATABASE_NAME = 'muscu.db';
 
 export type Database = ExpoSQLiteDatabase<typeof schema>;
 
-let sqliteHandle: SQLite.SQLiteDatabase | null = null;
-let drizzleHandle: Database | null = null;
+/*
+ * Les poignées vivent sur `globalThis` et pas dans des variables de module :
+ * en dev, le rechargement à chaud réévalue ce fichier dès qu'une de ses
+ * dépendances change (le schéma, typiquement). Une variable de module
+ * repartirait à null pendant que l'app tourne encore — les écritures suivantes
+ * échouaient alors en plein milieu d'une transaction (« Failed to run the
+ * query 'rollback' »). Une seule connexion par page, quoi qu'il arrive.
+ */
+type Handles = { sqlite: SQLite.SQLiteDatabase | null; drizzle: Database | null };
+const handles: Handles = ((globalThis as { __muscuDb?: Handles }).__muscuDb ??= { sqlite: null, drizzle: null });
 
 /**
  * Ouvre la base. À appeler **une fois**, avant tout accès (voir app/_layout.tsx).
@@ -25,11 +33,12 @@ let drizzleHandle: Database | null = null;
  * worker démarrer ; les appels synchrones répondent ensuite immédiatement.
  */
 export async function initDatabase(): Promise<Database> {
-  if (drizzleHandle) return drizzleHandle;
+  if (handles.drizzle) return handles.drizzle;
 
+  let sqlite: SQLite.SQLiteDatabase;
   try {
     if (Platform.OS === 'web') await warmUpWorker();
-    sqliteHandle = SQLite.openDatabaseSync(DATABASE_NAME);
+    sqlite = SQLite.openDatabaseSync(DATABASE_NAME);
   } catch (e) {
     // Sur le web, un échec ici est définitif pour cette page : on repart à neuf.
     if (recoverByReloading()) return new Promise<never>(() => {});
@@ -37,15 +46,16 @@ export async function initDatabase(): Promise<Database> {
   }
 
   try {
-    sqliteHandle.execSync('PRAGMA journal_mode = WAL;');
+    sqlite.execSync('PRAGMA journal_mode = WAL;');
   } catch {
     // Le VFS OPFS du build web ne connaît pas le WAL : sans importance ici.
   }
-  sqliteHandle.execSync('PRAGMA foreign_keys = ON;');
+  sqlite.execSync('PRAGMA foreign_keys = ON;');
 
-  drizzleHandle = drizzle(sqliteHandle, { schema });
+  handles.sqlite = sqlite;
+  handles.drizzle = drizzle(sqlite, { schema });
   clearRecoveryFlag();
-  return drizzleHandle;
+  return handles.drizzle;
 }
 
 /**
@@ -126,13 +136,24 @@ function clearRecoveryFlag(): void {
  */
 export const db: Database = new Proxy({} as Database, {
   get(_target, prop, receiver) {
-    if (!drizzleHandle) {
+    const handle = handles.drizzle;
+    if (!handle) {
       throw new Error("La base n'est pas ouverte : initDatabase() doit être awaité d'abord.");
     }
-    const value = Reflect.get(drizzleHandle, prop, receiver);
-    return typeof value === 'function' ? value.bind(drizzleHandle) : value;
+    const value = Reflect.get(handle, prop, receiver);
+    return typeof value === 'function' ? value.bind(handle) : value;
   },
 });
+
+/**
+ * Poignée expo-sqlite brute. Réservée à la sync (db/queries/sync.ts), qui
+ * déplace des lignes entières entre SQLite et Postgres sans passer par les
+ * types Drizzle.
+ */
+export function rawDatabase(): SQLite.SQLiteDatabase {
+  if (!handles.sqlite) throw new Error("La base n'est pas ouverte : initDatabase() doit être awaité d'abord.");
+  return handles.sqlite;
+}
 
 /* ------------------------------------------------------------------ *
  * Réactivité.

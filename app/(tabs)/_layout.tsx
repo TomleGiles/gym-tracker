@@ -59,7 +59,7 @@ const s = StyleSheet.create({
   shell: { flex: 1, flexDirection: 'row', backgroundColor: c.bg },
   sidebar: { width: 224, padding: 16, borderRightWidth: 1, borderRightColor: c.border, backgroundColor: '#101418' },
   brand: { paddingHorizontal: 12, paddingVertical: 20, marginBottom: 30 },
-  navLabel: { fontSize: 9, fontWeight: '600', letterSpacing: 1, color: c.textFaint, paddingLeft: 12, marginBottom: 14 },
+  navLabel: { fontSize: 10, fontWeight: '600', letterSpacing: 1, color: c.textFaint, paddingLeft: 12, marginBottom: 14 },
   nav: { gap: 7 },
   navItem: { minHeight: 49, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 13, gap: 11, borderRadius: radius.md },
   navActive: { backgroundColor: c.accentDim },

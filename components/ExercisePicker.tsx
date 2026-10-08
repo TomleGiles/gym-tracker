@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   sheet: { flex: 1, backgroundColor: c.bg },
   content: { flex: 1, width: '100%', maxWidth: 840, alignSelf: 'center' },
   headingCopy: { gap: space.xs, flex: 1 },
-  eyebrow: { color: c.accent, fontSize: 9, fontWeight: '700', letterSpacing: 1.6 },
+  eyebrow: { color: c.accent, fontSize: 10, fontWeight: '700', letterSpacing: 1.6 },
   head: {
     flexDirection: 'row',
     alignItems: 'center',

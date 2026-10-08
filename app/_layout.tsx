@@ -11,17 +11,19 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { AppState, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { Text } from '../components/Text';
 import { Loading } from '../components/ui';
 import { db, initDatabase, useQuery } from '../db/client';
-import { getSignedInAccount } from '../db/queries/auth';
+import { forgetSignedIn, getSignedInAccount } from '../db/queries/auth';
+import { syncNow } from '../db/queries/cloud';
 import migrations from '../db/migrations/migrations';
 import { runSeed } from '../db/seed';
 import { configureNotifications } from '../lib/notifications';
+import { supabase } from '../lib/supabase';
 import { c, space } from '../lib/theme';
 
 export default function RootLayout() {
@@ -84,6 +86,7 @@ function MigratedApp() {
 function AppNavigator() {
   const account = useQuery(() => getSignedInAccount(), []);
   const signedIn = account !== null;
+  useCloudSync(signedIn);
 
   return (
     <GestureHandlerRootView style={styles.fill}>
@@ -126,10 +129,34 @@ function AppNavigator() {
             <Stack.Screen name="history/[id]" options={{ title: '' }} />
             <Stack.Screen name="history/volume" options={{ title: 'Volume par muscle' }} />
           </Stack.Protected>
+          {/* Ouvert depuis le lien « mot de passe oublié », connecté ou non. */}
+          <Stack.Screen name="reset-password" options={{ headerShown: false, animation: 'fade' }} />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
+}
+
+/**
+ * Sync en tâche de fond (lot S0) : à l'ouverture et à chaque retour au premier
+ * plan. Jamais attendue par l'UI. Si Supabase signale la fin de la session
+ * (jeton révoqué), on repasse par l'écran de connexion.
+ */
+function useCloudSync(signedIn: boolean) {
+  useEffect(() => {
+    if (!signedIn) return;
+    void syncNow();
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void syncNow();
+    });
+    const { data } = supabase().auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') forgetSignedIn();
+    });
+    return () => {
+      appState.remove();
+      data.subscription.unsubscribe();
+    };
+  }, [signedIn]);
 }
 
 const Booting = ({ label }: { label: string }) => (

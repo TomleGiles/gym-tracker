@@ -77,17 +77,18 @@ export default function HomeScreen() {
     <View style={[s.bottomGrid, wide && s.row]}>
       <Card style={[s.muscleCard, wide && { flex: 1 }]}>
         <View style={s.sectionHeading}><View style={{ gap: 4 }}><Text style={type.h3}>Ton empreinte musculaire</Text><Text style={type.caption}>Volume des 7 derniers jours</Text></View><View style={s.iconBox}><Icon name="body-outline" color={c.accent} /></View></View>
-        <View style={[s.muscleBody, mobile && { gap: 8 }]}>
-          <View style={s.bodyMap}><BodyMap highlights={highlights} view="both" size={mobile ? 88 : 100} /></View>
-          <View style={s.muscleLegend}>
-            {trained.length ? trained.slice(0, 4).map(({ muscle, sets }) => <View key={muscle.id} style={s.muscleItem}><View style={s.muscleLabel}><Text numberOfLines={1} style={s.muscleName}>{muscle.labelFr}</Text><Text style={s.muscleSets}>{Number(sets.toFixed(1))}</Text></View><View style={s.volumeTrack}><View style={[s.volumeFill, { width: `${Math.max(4, (sets / (trained[0]?.sets || 1)) * 100)}%` }]} /></View></View>) : <><Text style={s.muscleEmptyTitle}>Visualise ton effort.</Text><Text style={type.small}>Tes muscles travaillés s’illuminent au fil de tes séances.</Text></>}
+        {/* Sur téléphone, la légende passe sous le corps : à côté, elle n'avait que quelques mots par ligne. */}
+        <View style={[s.muscleBody, mobile && s.muscleBodyMobile]}>
+          <View style={s.bodyMap}><BodyMap highlights={highlights} view="both" size={100} /></View>
+          <View style={[s.muscleLegend, mobile && s.muscleLegendMobile]}>
+            {trained.length ? trained.slice(0, 4).map(({ muscle, sets }) => <View key={muscle.id} style={s.muscleItem}><View style={s.muscleLabel}><Text numberOfLines={1} style={s.muscleName}>{muscle.labelFr}</Text><Text style={s.muscleSets}>{Number(sets.toFixed(1))}</Text></View><View style={s.volumeTrack}><View style={[s.volumeFill, { width: `${Math.max(4, (sets / (trained[0]?.sets || 1)) * 100)}%` }]} /></View></View>) : <><Text style={[s.muscleEmptyTitle, mobile && s.centered]}>Visualise ton effort.</Text><Text style={[type.small, mobile && s.centered]}>Tes muscles travaillés s’illuminent au fil de tes séances.</Text></>}
           </View>
         </View>
         <Button label="Explorer mon volume" variant="secondary" icon="analytics-outline" onPress={() => router.push('/history/volume')} />
       </Card>
       <Card style={[s.activityCard, wide && { flex: 1 }]}>
         <View style={s.sectionHeading}><View style={{ gap: 4 }}><Text style={type.h3}>Dernières séances</Text><Text style={type.caption}>Les petits pas font les grands progrès</Text></View><Icon name="time-outline" /></View>
-        {recent.length ? <View style={s.activityList}>{recent.map((session) => <Pressable accessibilityRole="button" key={session.id} onPress={() => router.push(`/history/${session.id}`)} style={({ pressed }) => [s.activityRow, pressed && { opacity: 0.65 }]}><View style={s.activityIcon}><Icon name="barbell-outline" size={20} color={c.accent} /></View><View style={{ flex: 1, gap: 5 }}><Text style={s.activityName} numberOfLines={1}>{session.routineName}</Text><Text style={type.caption}>{relativeDay(session.startedAt)} · {session.setCount} séries · {duration(session.durationMin ?? 0)}</Text></View>{session.prCount ? <Badge label={`${session.prCount} PR`} tone="pr" /> : null}<Icon name="chevron-forward" size={15} /></Pressable>)}</View> : <View style={s.emptyActivity}><View style={s.emptyActivityIcon}><Icon name="fitness-outline" color={c.accent} size={34} /></View><Text style={s.emptyTitle}>La suite, c’est toi qui l’écris.</Text><Text style={[type.small, { textAlign: 'center', maxWidth: 280 }]}>Ta première séance marquera le début de ta progression.</Text></View>}
+        {recent.length ? <View style={s.activityList}>{recent.map((session) => <Pressable accessibilityRole="button" key={session.id} onPress={() => router.push(`/history/${session.id}`)} style={({ pressed }) => [s.activityRow, pressed && { opacity: 0.65 }]}><View style={s.activityIcon}><Icon name="barbell-outline" size={20} color={c.accent} /></View><View style={{ flex: 1, gap: 5 }}><Text style={s.activityName} numberOfLines={1}>{session.routineName}</Text><Text style={type.caption}>{relativeDay(session.startedAt)} · {plural(session.setCount, 'série')} ·{duration(session.durationMin ?? 0)}</Text></View>{session.prCount ? <Badge label={`${session.prCount} PR`} tone="pr" /> : null}<Icon name="chevron-forward" size={15} /></Pressable>)}</View> : <View style={s.emptyActivity}><View style={s.emptyActivityIcon}><Icon name="fitness-outline" color={c.accent} size={34} /></View><Text style={s.emptyTitle}>La suite, c’est toi qui l’écris.</Text><Text style={[type.small, { textAlign: 'center', maxWidth: 280 }]}>Ta première séance marquera le début de ta progression.</Text></View>}
         <Button label="Toute ma progression" variant="ghost" icon="arrow-forward" onPress={() => router.push('/history')} />
       </Card>
     </View>
@@ -111,18 +112,18 @@ const s = StyleSheet.create({
   heroContent: { maxWidth: '75%', gap: 13, zIndex: 1 },
   heroEyebrow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   liveDot: { height: 6, width: 6, borderRadius: 3, backgroundColor: c.accent },
-  heroEyebrowText: { color: c.accent, fontSize: 9, fontWeight: '700', letterSpacing: 1.2, flexShrink: 1 },
+  heroEyebrowText: { color: c.accent, fontSize: 10, fontWeight: '700', letterSpacing: 1.2, flexShrink: 1 },
   heroTitle: { ...font.display, color: c.text, fontSize: 59, lineHeight: 60, letterSpacing: 0.2, textTransform: 'uppercase' },
-  heroSubtitle: { color: '#B6C1AF', fontSize: 12, lineHeight: 20, maxWidth: 325 },
+  heroSubtitle: { color: '#B6C1AF', fontSize: 13, lineHeight: 20, maxWidth: 325 },
   heroExercises: { gap: 5 },
-  heroExercise: { color: '#C8D0C1', fontSize: 11, lineHeight: 19 },
+  heroExercise: { color: '#C8D0C1', fontSize: 12, lineHeight: 19 },
   heroActions: { alignSelf: 'flex-start', gap: 3, marginTop: 3 },
   heroLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 44 },
-  heroLinkText: { color: c.textDim, fontSize: 11, fontWeight: '500' },
-  heroIndex: { position: 'absolute', bottom: 18, right: 20, fontSize: 8, color: '#728064', letterSpacing: 2 },
+  heroLinkText: { color: c.textDim, fontSize: 13, fontWeight: '500' },
+  heroIndex: { position: 'absolute', bottom: 18, right: 20, fontSize: 9, color: '#728064', letterSpacing: 2 },
   weekColumn: { gap: 9, justifyContent: 'center' },
   goalLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', paddingHorizontal: 5, minHeight: 44 },
-  smallLink: { color: c.accent, fontSize: 11, fontWeight: '600' },
+  smallLink: { color: c.accent, fontSize: 12, fontWeight: '600' },
   sectionHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
   metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
   metric: { flex: 1, minWidth: 0, padding: 20, gap: 5 },
@@ -136,10 +137,13 @@ const s = StyleSheet.create({
   iconBox: { backgroundColor: c.accentDim, width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   muscleBody: { flexDirection: 'row', alignItems: 'center', gap: 20, flex: 1 },
   bodyMap: { alignItems: 'center', justifyContent: 'center', paddingVertical: 6 },
+  muscleBodyMobile: { flexDirection: 'column', alignItems: 'stretch', gap: 16 },
   muscleLegend: { flex: 1, gap: 17 },
+  muscleLegendMobile: { flex: 0, gap: 12 },
+  centered: { textAlign: 'center' },
   muscleItem: { gap: 7 },
   muscleLabel: { flexDirection: 'row', gap: 5, justifyContent: 'space-between' },
-  muscleName: { color: c.textDim, fontSize: 10, flex: 1 },
+  muscleName: { color: c.textDim, fontSize: 12, flex: 1 },
   muscleSets: { color: c.accent, fontSize: 11, ...font.tabular },
   volumeTrack: { height: 4, backgroundColor: c.surfaceHigh, borderRadius: 2 },
   volumeFill: { height: 4, backgroundColor: c.accent, borderRadius: 2 },
@@ -153,5 +157,5 @@ const s = StyleSheet.create({
   emptyActivityIcon: { width: 64, height: 64, borderRadius: 22, backgroundColor: c.accentDim, alignItems: 'center', justifyContent: 'center' },
   emptyTitle: { color: c.text, fontWeight: '600', fontSize: 15, textAlign: 'center' },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingTop: 16, opacity: 0.6 },
-  footerText: { color: c.textFaint, fontSize: 8, letterSpacing: 1, flexShrink: 1 },
+  footerText: { color: c.textFaint, fontSize: 10, letterSpacing: 1, flexShrink: 1 },
 });

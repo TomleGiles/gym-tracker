@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
   ringWrap: { alignItems: 'center', paddingVertical: space.sm },
   ringValue: { ...font.display, color: c.text, fontSize: 42, lineHeight: 46 },
   ringUnit: { ...font.display, color: c.accent, fontSize: 24 },
-  ringCaption: { color: c.textFaint, fontSize: 9 },
+  ringCaption: { color: c.textFaint, fontSize: 10 },
   sideStats: { flexDirection: 'row', justifyContent: 'space-between', gap: space.md, paddingTop: space.md, borderTopWidth: 1, borderTopColor: c.border },
   sideStatValue: { ...font.display, color: c.text, fontSize: 30 },
   sideStatLabel: { color: c.textFaint, fontSize: 11 },
@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
   tipTitle: { color: c.text, fontSize: 14, fontWeight: '700' },
   tipBody: { color: c.textDim, fontSize: 12, lineHeight: 20 },
   savedHint: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingTop: space.md, borderTopWidth: 1, borderTopColor: c.border },
-  savedText: { color: c.textFaint, flex: 1, fontSize: 10, lineHeight: 16 },
+  savedText: { color: c.textFaint, flex: 1, fontSize: 12, lineHeight: 16 },
 
   block: {
     backgroundColor: c.surface,

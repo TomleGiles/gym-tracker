@@ -1,4 +1,4 @@
-import { eq, inArray, notInArray, sql } from 'drizzle-orm';
+import { count, eq, inArray, notInArray, sql } from 'drizzle-orm';
 
 import { db } from '../client';
 import { cardioActivity, exercise, exerciseMuscle, meta, muscle } from '../schema';
@@ -39,11 +39,16 @@ export const SEED_VERSION = seed.seed_version;
  * Charge le référentiel. Idempotent et rejouable à chaque montée de version :
  *  - les exercices `is_custom = 1` ne sont jamais touchés ;
  *  - un exercice retiré du seed est conservé (l'historique pointe dessus) ;
- *  - relancer avec la même version ne fait rien.
+ *  - relancer avec la même version ne fait rien, sauf si une table du
+ *    référentiel est vide : une base passée par une écriture interrompue se
+ *    répare au démarrage suivant au lieu d'afficher des listes vides.
  */
 export function runSeed(): { applied: boolean; version: number } {
   const current = db.select().from(meta).where(eq(meta.key, 'seed_version')).get();
-  if (current && Number(current.value) === SEED_VERSION) {
+  const complete =
+    (db.select({ n: count() }).from(exercise).get()?.n ?? 0) > 0 &&
+    (db.select({ n: count() }).from(cardioActivity).get()?.n ?? 0) > 0;
+  if (current && Number(current.value) === SEED_VERSION && complete) {
     return { applied: false, version: SEED_VERSION };
   }
 

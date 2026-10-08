@@ -115,7 +115,7 @@ export default function ExercisesScreen() {
                 <Input
                   value={search}
                   onChangeText={setSearch}
-                  placeholder="Un exercice, un mouvement…"
+                  placeholder={width < 500 ? 'Rechercher…' : 'Un exercice, un mouvement…'}
                   accessibilityLabel="Rechercher un exercice"
                   autoCorrect={false}
                   returnKeyType="search"

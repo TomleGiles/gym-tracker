@@ -6,3 +6,6 @@ expo-env.d.ts
 # @end expo-cli
 # État local du serveur de dev Expo
 .expo/
+
+# Clés Supabase du projet (voir .env.example)
+.env

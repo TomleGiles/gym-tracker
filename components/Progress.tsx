@@ -92,9 +92,9 @@ const styles = StyleSheet.create({
   recordValue: { ...font.display, color: c.text, fontSize: 39, marginTop: 5 },
   recordUnit: { ...font.display, color: c.textFaint, fontSize: 20 },
   recordDetails: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between' },
-  recordReps: { color: c.textFaint, fontSize: 10 },
-  recordGain: { color: c.pr, fontSize: 10, fontWeight: '600' },
+  recordReps: { color: c.textFaint, fontSize: 12 },
+  recordGain: { color: c.pr, fontSize: 12, fontWeight: '600' },
   recordFooter: { borderTopWidth: 1, borderTopColor: c.border, marginTop: 10, paddingTop: 12, gap: 4 },
-  recordWhen: { ...type.caption, fontSize: 10 },
-  recordEstimate: { color: c.textFaint, fontSize: 10 },
+  recordWhen: { ...type.caption, fontSize: 12 },
+  recordEstimate: { color: c.textFaint, fontSize: 12 },
 });

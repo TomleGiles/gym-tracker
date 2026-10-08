@@ -6,12 +6,13 @@ import { Text } from '../../components/Text';
 import { Avatar, Badge, Button, Card, Icon, IconButton, PageHeader, Screen, SectionTitle, Stat } from '../../components/ui';
 import { useQuery } from '../../db/client';
 import { getSignedInAccount, signOut } from '../../db/queries/auth';
+import { syncNow, useSyncStatus } from '../../db/queries/cloud';
 import { WEEKLY_GOAL_RANGE, getWeeklyGoal, setWeeklyGoal } from '../../db/queries/engagement';
 import { getDashboard, getLifetimeStats } from '../../db/queries/stats';
 import { seedDemoData } from '../../db/seed/demo';
 import { exportBackup } from '../../lib/backup';
 import { confirmDialog } from '../../lib/confirm';
-import { tonnageLabel } from '../../lib/format';
+import { clockTime, relativeDay, tonnageLabel } from '../../lib/format';
 import { c, font, radius, space, type } from '../../lib/theme';
 
 export default function ProfileScreen() {
@@ -22,6 +23,8 @@ export default function ProfileScreen() {
   const { width } = useWindowDimensions();
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
+  const sync = useSyncStatus();
   const wide = width >= 1080;
 
   // Le garde de app/_layout.tsx démonte cet écran dès la déconnexion.
@@ -60,7 +63,7 @@ export default function ProfileScreen() {
         </View>
         <View style={styles.identityBottom}>
           <Text style={styles.identitySignature}>LE SEUL ADVERSAIRE, C'EST HIER.</Text>
-          <Badge label="Compte local" icon="shield-checkmark-outline" />
+          <Badge label="Compte en ligne" icon="cloud-done-outline" />
         </View>
       </Card>
 
@@ -100,7 +103,7 @@ export default function ProfileScreen() {
           <Card style={styles.social}>
             <View style={styles.socialHeading}><Icon name="people-outline" size={22} color={c.textDim} /><Badge label="À venir" /></View>
             <Text style={type.h3}>Plus forts, ensemble.</Text>
-            <Text style={styles.description}>Partager tes séances et suivre tes partenaires de salle : la prochaine étape, avec la synchronisation.</Text>
+            <Text style={styles.description}>Partager tes séances et suivre tes partenaires de salle : la prochaine étape, maintenant que ton compte est en ligne.</Text>
           </Card>
         </View>
 
@@ -108,19 +111,40 @@ export default function ProfileScreen() {
           <SectionTitle>Tes données, ton contrôle</SectionTitle>
           <Card style={styles.dataCard}>
             <View style={styles.cardHeading}>
-              <View style={styles.iconBox}><Icon name="phone-portrait-outline" size={21} color={c.accent} /></View>
-              <View style={styles.flex}><Text style={type.h3}>Toujours avec toi</Text><Text style={styles.description}>Disponible hors ligne sur cet appareil.</Text></View>
+              <View style={styles.iconBox}><Icon name={sync.state === 'error' ? 'cloud-offline-outline' : 'cloud-done-outline'} size={21} color={sync.state === 'error' ? c.warn : c.accent} /></View>
+              <View style={styles.flex}>
+                <Text style={type.h3}>Sauvegardé sur ton compte</Text>
+                <Text style={[styles.description, sync.state === 'error' && { color: c.warn }]} accessibilityLiveRegion="polite">
+                  {sync.state === 'syncing'
+                    ? 'Synchronisation…'
+                    : sync.state === 'error'
+                      ? sync.error
+                      : sync.lastAt
+                        ? `Synchronisé ${relativeDay(sync.lastAt)} à ${clockTime(sync.lastAt)}`
+                        : 'Pas encore synchronisé sur cet appareil.'}
+                </Text>
+              </View>
             </View>
-            <Text style={styles.description}>Tes séances sont enregistrées ici. Exporte une copie de tes entraînements au format JSON pour en conserver une sauvegarde.</Text>
-            <Button label={exporting ? 'Export en cours…' : 'Exporter mes entraînements'} icon="download-outline" variant="secondary" disabled={exporting} onPress={saveBackup} />
+            <Text style={styles.description}>Tes séances sont enregistrées sur cet appareil, disponibles même sans réseau, et sauvegardées en ligne dès que possible. Connecte-toi sur un autre appareil pour les y retrouver.</Text>
+            <Button label={sync.state === 'syncing' ? 'Synchronisation…' : 'Synchroniser maintenant'} icon="sync-outline" variant="secondary" disabled={sync.state === 'syncing'} onPress={() => void syncNow()} />
+            <Button label={exporting ? 'Export en cours…' : 'Exporter mes entraînements'} icon="download-outline" variant="ghost" disabled={exporting} onPress={saveBackup} />
             {exportError ? <Text style={styles.error} accessibilityRole="alert">{exportError}</Text> : null}
             <Button label="Voir mon historique" icon="time-outline" variant="ghost" onPress={() => router.push('/history')} />
           </Card>
 
           <Card style={styles.accountCard}>
             <Text style={type.h3}>Accès à ton compte</Text>
-            <Text style={styles.description}>Après une déconnexion, ton mot de passe sera nécessaire pour revenir. Tes données restent sur cet appareil.</Text>
-            <Button label="Se déconnecter" icon="log-out-outline" variant="danger" onPress={() => confirmDialog('Se déconnecter ?', 'Tes données restent sur cet appareil. Il faudra ton mot de passe pour revenir.', 'Se déconnecter', signOut)} />
+            <Text style={styles.description}>Ta progression reste sur ton compte : reconnecte-toi avec ton e-mail et ton mot de passe, ici ou sur un autre appareil.</Text>
+            <Button
+              label={signingOut ? 'Déconnexion…' : 'Se déconnecter'}
+              icon="log-out-outline"
+              variant="danger"
+              disabled={signingOut}
+              onPress={() => confirmDialog('Se déconnecter ?', 'Tes séances sont sauvegardées sur ton compte. Il faudra ton mot de passe pour revenir.', 'Se déconnecter', () => {
+                setSigningOut(true);
+                void signOut();
+              })}
+            />
           </Card>
         </View>
       </View>
@@ -142,7 +166,7 @@ const styles = StyleSheet.create({
   memberDot: { width: 5, height: 5, backgroundColor: c.accent, borderRadius: 3 },
   memberSince: { color: c.textFaint, fontSize: 11, flex: 1 },
   identityBottom: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingTop: 18, borderTopWidth: 1, borderTopColor: c.border },
-  identitySignature: { color: c.textFaint, fontSize: 9, letterSpacing: 1.2, fontWeight: '600' },
+  identitySignature: { color: c.textFaint, fontSize: 10, letterSpacing: 1.2, fontWeight: '600' },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   statTile: { flex: 1, minWidth: 136, padding: 20, gap: 14, backgroundColor: c.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: c.border },
   columns: { gap: 8 },
@@ -170,5 +194,5 @@ const styles = StyleSheet.create({
   error: { color: c.danger, fontSize: 12, lineHeight: 18 },
   footer: { alignItems: 'center', gap: 5, paddingVertical: space.xl },
   footerBrand: { color: c.textFaint, fontSize: 12, fontWeight: '800', letterSpacing: 3 },
-  footerText: { color: c.textFaint, fontSize: 10 },
+  footerText: { color: c.textFaint, fontSize: 12 },
 });

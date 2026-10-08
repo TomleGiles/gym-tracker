@@ -57,9 +57,11 @@ export function PageHeader({ eyebrow, title, subtitle, action }: {
   subtitle?: string;
   action?: ReactNode;
 }) {
+  // Sur téléphone, l'action passe sous le texte plutôt que d'écraser le titre.
+  const narrow = useWindowDimensions().width < 600;
   return (
     <View style={styles.pageHeader}>
-      <View style={{ flex: 1, minWidth: 180, gap: 7 }}>
+      <View style={[{ flex: 1, minWidth: 180, gap: 7 }, narrow && { flexBasis: '100%' }]}>
         {eyebrow ? <Text style={[type.overline, { color: c.accent }]}>{eyebrow}</Text> : null}
         <Text accessibilityRole="header" style={type.title}>{title}</Text>
         {subtitle ? <Text style={type.small}>{subtitle}</Text> : null}
@@ -293,14 +295,17 @@ export function Stat({
   label,
   tone = 'default',
   size = 'md',
+  style,
 }: {
   value: string;
   label: string;
   tone?: keyof typeof STAT_COLOR;
   size?: 'md' | 'lg';
+  /** Pour caler les stats sur une grille quand la rangée passe à la ligne. */
+  style?: StyleProp<ViewStyle>;
 }) {
   return (
-    <View style={styles.stat}>
+    <View style={[styles.stat, size === 'lg' && styles.statLg, style]}>
       <Text
         style={[styles.statValue, size === 'lg' && styles.statValueLg, { color: STAT_COLOR[tone] }]}
         numberOfLines={1}
@@ -506,7 +511,10 @@ export const styles = StyleSheet.create({
     fontSize: 16,
   },
 
-  stat: { flex: 1, gap: 2 },
+  // `adjustsFontSizeToFit` ne fait rien sur le web : une largeur minimale fait
+  // passer les stats à la ligne (rangée en `flexWrap`) au lieu de les tronquer.
+  stat: { flex: 1, minWidth: 76, gap: 2 },
+  statLg: { minWidth: 104 },
   statValue: { ...font.display, fontSize: 28, lineHeight: 32 },
   statValueLg: { fontSize: 40, lineHeight: 42 },
   statLabel: { color: c.textFaint, fontSize: 12, fontWeight: '500' },

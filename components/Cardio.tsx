@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text } from './Text';
@@ -301,7 +301,7 @@ function Stepper({ label, value, onMinus, onPlus }: { label: string; value: stri
     <View style={styles.stepper}>
       <IconButton name="remove" accessibilityLabel={`${label} moins`} color={c.text} onPress={onMinus} />
       <View style={styles.stepperText}>
-        <Text style={[type.overline, { fontSize: 9 }]}>{label.toUpperCase()}</Text>
+        <Text style={[type.overline, { fontSize: 10 }]}>{label.toUpperCase()}</Text>
         <Text style={[styles.stepperValue, font.tabular]} numberOfLines={1}>{value}</Text>
       </View>
       <IconButton name="add" accessibilityLabel={`${label} plus`} color={c.text} onPress={onPlus} />
@@ -377,7 +377,7 @@ export function CardioLibrary({ columns }: { columns: number }) {
 function LibraryRecord({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.flex}>
-      <Text style={[type.overline, { fontSize: 9 }]}>{label}</Text>
+      <Text style={[type.overline, { fontSize: 10 }]}>{label}</Text>
       <Text style={[styles.libraryValue, font.tabular]} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
     </View>
   );
@@ -418,6 +418,7 @@ function inputFrom(draft: Draft, activity: CardioActivity): CardioInput {
 
 function CardioSheet({ sessionId, editing, onClose }: { sessionId: string; editing: Editing | null; onClose: () => void }) {
   const activities = useQuery(() => listCardioActivities(), []);
+  const wide = useWindowDimensions().width >= 700;
   const [activity, setActivity] = useState<CardioActivity | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [error, setError] = useState<string | null>(null);
@@ -501,8 +502,8 @@ function CardioSheet({ sessionId, editing, onClose }: { sessionId: string; editi
   return (
     <Modal visible={!!editing} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Fermer" />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.sheetWrap} pointerEvents="box-none">
-        <SafeAreaView edges={['bottom']} style={styles.sheet}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.sheetWrap, wide && styles.sheetWrapWide]} pointerEvents="box-none">
+        <SafeAreaView edges={wide ? [] : ['bottom']} style={[styles.sheet, wide && styles.sheetWide]}>
           <View style={styles.sheetHead}>
             {activity && editing?.mode === 'add' ? (
               <IconButton name="chevron-back" accessibilityLabel="Changer d'activité" color={c.text} onPress={() => setActivity(null)} />
@@ -514,7 +515,7 @@ function CardioSheet({ sessionId, editing, onClose }: { sessionId: string; editi
             <IconButton name="close" accessibilityLabel="Fermer" color={c.text} onPress={onClose} />
           </View>
 
-          <ScrollView contentContainerStyle={styles.sheetBody} keyboardShouldPersistTaps="handled">
+          <ScrollView style={styles.sheetScroll} contentContainerStyle={styles.sheetBody} keyboardShouldPersistTaps="handled">
             {!activity ? (
               (['gym', 'outdoor'] as const).map((setting) => (
                 <View key={setting} style={styles.group}>
@@ -674,7 +675,12 @@ const styles = StyleSheet.create({
 
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.78)' },
   sheetWrap: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { width: '100%', maxWidth: 520, maxHeight: '92%', alignSelf: 'center', backgroundColor: c.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderWidth: 1, borderColor: c.border },
+  // Sur grand écran, une feuille collée en bas d'une fenêtre large se lit mal : boîte centrée.
+  sheetWrapWide: { justifyContent: 'center', padding: space.xl },
+  sheet: { width: '100%', maxWidth: 520, maxHeight: '92%', alignSelf: 'center', backgroundColor: c.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderWidth: 1, borderColor: c.border, overflow: 'hidden' },
+  sheetWide: { maxHeight: '100%', borderRadius: radius.xl },
+  // Sans ça, sur un écran peu haut, le contenu dépasse la feuille au lieu d'y défiler.
+  sheetScroll: { flexShrink: 1 },
   sheetHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.lg, paddingBottom: space.sm },
   sheetTitle: { ...font.display, fontSize: 28, lineHeight: 32, color: c.text },
   sheetBody: { padding: space.lg, paddingTop: space.sm, gap: space.xl },
@@ -682,7 +688,8 @@ const styles = StyleSheet.create({
   group: { gap: space.md },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   tile: { width: '31.5%', minHeight: 88, padding: space.md, gap: space.sm, borderRadius: radius.lg, backgroundColor: c.surfaceAlt, justifyContent: 'space-between' },
-  tileLabel: { color: c.text, fontSize: 13, fontWeight: '600', lineHeight: 17 },
+  // 12 px : « d'appartement » doit tenir sur une ligne d'une tuile au tiers d'un téléphone.
+  tileLabel: { color: c.text, fontSize: 12, fontWeight: '600', lineHeight: 16 },
 
   form: { gap: space.lg },
   lastTime: { flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.md, borderRadius: radius.md, backgroundColor: c.surfaceAlt },

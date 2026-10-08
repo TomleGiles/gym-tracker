@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   idle: { minHeight: 58, flexDirection: 'row', gap: space.sm, alignItems: 'center', paddingHorizontal: space.lg, borderRadius: radius.lg, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border },
   idleText: { color: c.textFaint, flex: 1, fontSize: 11 },
   autoBadge: { borderRadius: radius.sm, backgroundColor: c.surfaceHigh, paddingHorizontal: 6, paddingVertical: 4 },
-  autoLabel: { color: c.textDim, fontSize: 9, letterSpacing: 1, fontWeight: '700' },
+  autoLabel: { color: c.textDim, fontSize: 10, letterSpacing: 1, fontWeight: '700' },
   bar: {
     flexDirection: 'row',
     alignItems: 'center',

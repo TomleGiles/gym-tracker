@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
   header: { gap: 28, marginBottom: 4 },
   toolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md, flexWrap: 'wrap' },
   tabs: { flexDirection: 'row', gap: space.sm },
-  hint: { ...type.overline, fontSize: 9, letterSpacing: 1.7 },
+  hint: { ...type.overline, fontSize: 10, letterSpacing: 1.7 },
   columns: { gap: space.lg },
   cardWrap: { flex: 1, minWidth: 0 },
   card: { flex: 1, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, borderRadius: radius.xl, padding: space.xl, overflow: 'hidden' },

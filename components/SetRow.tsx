@@ -170,5 +170,5 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     paddingHorizontal: 4,
   },
-  prTagLabel: { color: c.bg, fontSize: 9, fontWeight: '800' },
+  prTagLabel: { color: c.bg, fontSize: 10, fontWeight: '800' },
 });

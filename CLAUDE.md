@@ -14,6 +14,7 @@ En cas de contradiction, le README décrit ce qui existe, les specs ce qui est v
 ## Règles du projet
 
 - **Offline-first** : SQLite est la source de vérité. Aucun appel réseau dans le chemin critique de la saisie d'une série.
+- **Compte en ligne (Supabase, lot S0)** : auth dans `db/queries/auth.ts`, sync dans `db/queries/cloud.ts`, schéma serveur dans `supabase/migrations/`. Seule la clé `anon` va dans `.env` (voir `.env.example`), jamais `service_role`.
 - **Toutes les écritures passent par `db/queries/`**, qui incrémente la révision (`bumpRevision`) et alimente `sync_queue` via `queueOp`. Pas d'écriture Drizzle directe depuis un écran.
 - **PK en UUID v7** générés côté client (`lib/id.ts`), `updated_at` / `deleted_at` sur chaque table utilisateur, suppression = soft delete.
 - **Textes** : importer `Text` / `TextInput` depuis `components/Text.tsx`, jamais depuis `react-native`.

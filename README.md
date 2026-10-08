@@ -3,13 +3,16 @@
 Suivi d'entraînement en salle. Une seule codebase pour iOS, Android et le web.
 Implémentation de [`spec-muscu-tracker.md`](./spec-muscu-tracker.md).
 
-Tout est local : SQLite est la source de vérité, aucun appel réseau n'est fait
-pendant une séance. Un compte local protège l'accès ; le volet social (partager
-ses séances avec ses partenaires de salle) viendra avec la synchronisation.
+Offline-first : SQLite est la source de vérité sur l'appareil, aucun appel
+réseau n'est fait pendant une séance. Le compte est en ligne (Supabase) : on se
+connecte depuis n'importe quel appareil et la sync y ramène toute sa
+progression. Le volet social ([`spec-social.md`](./spec-social.md), lots S1 à
+S6) s'appuiera dessus.
 
 ## Démarrer
 
 ```bash
+cp .env.example .env # puis y mettre l'URL et la clé anon du projet Supabase
 npm install          # applique aussi le correctif expo-sqlite, voir plus bas
 npm run web          # http://localhost:8081
 npm run ios          # nécessite un Mac
@@ -49,32 +52,65 @@ démarrable hors ligne.
 
 ## Ce qui est fait
 
-Les 8 premiers lots du §10 du spec, plus le cardio (lot 10), un compte local et
-une couche de rétention (voir plus bas). La sync serveur (lot 9) n'est pas implémentée, mais
-le schéma la prépare : UUID v7 côté client, `updated_at` / `deleted_at` sur
-chaque table utilisateur, et une table `sync_queue` alimentée par toutes les
-mutations.
+Les 8 premiers lots du §10 du spec, plus le cardio (lot 10), une couche de
+rétention (voir plus bas) et le lot S0 du spec social : compte en ligne et
+synchronisation.
 
 | Écran | Route |
 |---|---|
-| Connexion / création de compte | `/login` |
+| Connexion, création de compte, mot de passe oublié | `/login` |
+| Nouveau mot de passe (lien reçu par e-mail) | `/reset-password` |
 | Accueil : prochaine séance, objectif de la semaine, records récents | `/` |
 | Catalogue de séances, programmes de départ | `/routines`, `/routines/new`, `/routines/[id]` |
 | Bibliothèque : 120 exercices, 27 muscles (bonhomme cliquable), 10 activités cardio | `/exercises`, `/exercises/[id]` |
 | Progrès : historique, export JSON | `/history`, `/history/[id]` |
 | Volume hebdo par muscle | `/history/volume` |
-| Profil : stats depuis le début, objectif hebdo, déconnexion | `/profile` |
+| Profil : stats depuis le début, objectif hebdo, état de la sync, déconnexion | `/profile` |
 | **Mode séance** | `/session/[id]` |
 | Bilan de fin de séance | `/session/recap/[id]` |
 
-## Compte
+## Compte et synchronisation (lot S0)
 
-Un compte **local**, un seul par appareil : il verrouille l'accès et prépare le
-volet social (partage de séances entre partenaires), qui arrivera avec la sync.
-Toutes les routes sauf `/login` sont derrière un `Stack.Protected` dans
-`app/_layout.tsx`. La connexion persiste (clé `signed_in_user_id` de `meta`)
-jusqu'à la déconnexion explicite. Le mot de passe est haché (SHA-256 salé) ; il
-n'y a pas de récupération possible tant qu'il n'y a pas de serveur.
+**Compte en ligne obligatoire** (Supabase Auth, e-mail + mot de passe, avec
+confirmation de l'adresse et récupération par e-mail). Il faut du réseau pour
+s'inscrire ou se connecter ; ensuite la session reste ouverte et l'app marche
+hors ligne. Toutes les routes sauf `/login` et `/reset-password` sont derrière
+un `Stack.Protected` dans `app/_layout.tsx`.
+
+- **`lib/supabase.ts`** : le client, créé à la demande (le build web est rendu
+  en statique, sans `window`). Session dans AsyncStorage (localStorage sur le
+  web).
+- **`db/queries/auth.ts`** : inscription, connexion, mot de passe oublié,
+  déconnexion. La table locale `user` garde le compte connecté sur l'appareil,
+  rattaché à son `auth.uid()` (`remote_id`). La base locale n'appartient qu'à
+  un compte : se connecter avec un autre la vide d'abord (l'écran prévient si
+  des séances n'ont pas encore été envoyées).
+- **Comptes locaux d'avant S0** : à la connexion, leur mot de passe local est
+  vérifié une dernière fois et sert à créer le compte en ligne ; tout
+  l'historique part au premier envoi. Ensuite le hash local ne sert plus.
+- **`db/queries/cloud.ts`** : la sync. Push puis pull, table par table
+  (`routine`, `routine_item`, `session`, `session_exercise`, `set_log`,
+  `cardio_log`). Elle tourne à la connexion, à l'ouverture, au retour au
+  premier plan, en fin de séance et depuis le Profil (« Synchroniser
+  maintenant ») — jamais pendant la saisie d'une série, et l'app ne l'attend
+  jamais. `exercise_stats` n'est pas synchronisé : il se recalcule après un
+  pull.
+- **Côté serveur** : `supabase/migrations/` crée le miroir des tables (mêmes
+  colonnes que SQLite, plus `owner_id` et `server_updated_at`), les règles RLS
+  (chacun ne lit et n'écrit que ses lignes, pas de DELETE) et le trigger
+  last-write-wins.
+
+### Mettre en place un projet Supabase
+
+1. Créer le projet (région UE) et copier l'URL et la clé **anon** dans `.env`.
+   Jamais la clé `service_role` : tout ce qui commence par `EXPO_PUBLIC_` est
+   livré dans le code de l'app.
+2. Appliquer `supabase/migrations/*.sql` (éditeur SQL du tableau de bord, ou
+   `supabase db push`).
+3. *Authentication → URL Configuration* : mettre l'adresse de l'app en **Site
+   URL** (`http://localhost:8081` en dev, le domaine en prod) et l'ajouter aux
+   **Redirect URLs**, avec `/reset-password`. Sinon les liens des e-mails
+   renvoient vers `localhost:3000`.
 
 ## Rétention
 
@@ -170,8 +206,9 @@ db/
   seed/exercises.json   le référentiel livré avec l'app
   seed/programs.ts      programmes de départ
   seed/demo.ts          données de démo (dev)
-lib/                    strength, volume, format, notifications, backup, theme, confirm
+lib/                    strength, volume, format, notifications, backup, theme, confirm, supabase
 stores/activeSession.ts état UI de la séance (Zustand)
+supabase/migrations/    tables, RLS et trigger côté serveur (lot S0)
 scripts/                génération du BodyMap, correctif expo-sqlite
 ```
 
@@ -201,6 +238,17 @@ courbe de charge en `react-native-svg` : même code partout, aucun poids ajouté
 plutôt qu'un objet par muscle. À 120 exercices c'est nettement plus court à
 relire ; `db/seed/index.ts` aplatit vers `exercise_muscle`.
 
+**La sync relit les tables au lieu de rejouer `sync_queue`, et le serveur
+tranche par trigger plutôt que par une fonction `sync_push`** (§3 du spec
+social). Certaines écritures ne passent pas ligne à ligne par `queueOp` (copie
+du modèle au démarrage d'une séance, suppressions en cascade, réordonnancement),
+alors que toutes avancent `updated_at`. Le push envoie donc les lignes dont
+`updated_at` dépasse un curseur, en upserts ; un trigger `BEFORE UPDATE` ignore
+toute version moins récente que celle du serveur, ce qui rend l'envoi rejouable.
+`sync_queue` reste alimentée et sert de signal, vidée après chaque envoi. Les
+horodatages sont du texte ISO côté Postgres aussi : l'app les compare comme des
+chaînes, un `timestamptz` les lui rendrait dans un autre format.
+
 **`useQuery` maison plutôt que `useLiveQuery` de Drizzle.** Ce dernier repose sur
 `addDatabaseChangeListener`, absent du portage web d'expo-sqlite. À la place, un
 compteur de révision global qu'incrémentent les mutations — toutes les écritures
@@ -228,11 +276,18 @@ le pool de handles OPFS.
   historique, volume, export). Le code natif est le même à l'exception
   d'`expo-notifications`, dont le chemin permission + notification programmée
   demande un vrai appareil, et des polices, à vérifier sur Android.
-- **Un seul compte par appareil**, sans récupération du mot de passe tant qu'il
-  n'y a pas de serveur. Le mot de passe n'est demandé qu'après une déconnexion
-  volontaire.
+- **Sync : exercices personnalisés non synchronisés.** La table `exercise` n'a
+  pas d'`updated_at` ; aucun écran ne crée encore d'exercice personnalisé, à
+  traiter le jour où il en existera un. L'objectif hebdo (`meta.weekly_goal`)
+  reste local aussi, il partira avec `profile` (lot S1).
+- **Sync : horloge de l'appareil.** Le push suit `updated_at`, posé par
+  l'appareil : une ligne modifiée pendant que l'horloge recule sous le dernier
+  envoi ne part qu'à sa prochaine modification. Le pull, lui, suit l'horloge
+  serveur.
+- **Mot de passe oublié sur mobile natif** : le lien de l'e-mail ouvre le web.
+  Le retour dans l'app native (deep link + échange de session) reste à faire.
 - **Le social n'existe pas encore** : l'encart « Partenaires » du Profil
-  l'annonce, il dépend de la sync.
+  l'annonce, il dépend des lots S1 et suivants.
 - **Support web d'expo-sqlite en alpha**, d'où le correctif ci-dessus.
 - Pas de superset dans l'UI : la colonne `superset_key` existe, l'écran de
   séance ne l'exploite pas encore.
