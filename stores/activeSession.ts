@@ -13,13 +13,19 @@ export type RestTimer = {
 
 export type PrFlash = { exerciseId: string; setId: string; e1rm: number; at: number };
 
+/** Focus : un exercice à la fois. Liste : toute la séance d'un coup d'œil. */
+export type SessionLayout = 'focus' | 'list';
+
 type State = {
-  /** Exercice déplié dans l'écran de séance — un seul à la fois. */
+  /** Exercice en cours : affiché en mode Focus, déplié en mode Liste. */
   expandedSlotId: string | null;
+  /** Préférence d'affichage : survit à la fin de la séance, pas au redémarrage. */
+  layout: SessionLayout;
   rest: RestTimer | null;
   prFlash: PrFlash | null;
 
   expand: (slotId: string | null) => void;
+  setLayout: (layout: SessionLayout) => void;
   startRest: (seconds: number, exerciseLabel: string) => void;
   extendRest: (deltaSeconds: number) => void;
   stopRest: () => void;
@@ -30,10 +36,12 @@ type State = {
 
 export const useActiveSession = create<State>((set, get) => ({
   expandedSlotId: null,
+  layout: 'focus',
   rest: null,
   prFlash: null,
 
   expand: (slotId) => set({ expandedSlotId: slotId }),
+  setLayout: (layout) => set({ layout }),
 
   startRest: (seconds, exerciseLabel) => {
     const previous = get().rest;

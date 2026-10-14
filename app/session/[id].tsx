@@ -1,17 +1,17 @@
-import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text } from '../../components/Text';
 import { CardioSection, CardioTimerBar } from '../../components/Cardio';
 import { ExercisePicker } from '../../components/ExercisePicker';
-import { NumPad, formatFr, parseFr } from '../../components/NumPad';
-import type { NumPadRequest } from '../../components/NumPad';
+import { NumPad, formatFr } from '../../components/NumPad';
 import { RestTimer } from '../../components/RestTimer';
+import { CARDIO_STEP, FocusView } from '../../components/SessionFocus';
 import { SetRow, setRowStyles } from '../../components/SetRow';
 import { Badge, Button, EmptyState, Icon, IconButton, Loading, ProgressRing } from '../../components/ui';
+import { lastWorkingSets, useExerciseSets } from '../../components/useExerciseSets';
 import { useQuery } from '../../db/client';
 import { finishCardioTimer, getCardioTimer, getSessionCardio, saveCardioTimer } from '../../db/queries/cardio';
 import {
@@ -21,15 +21,13 @@ import {
   endSession,
   getSession,
   getSessionView,
-  logSet,
   removeExerciseFromSession,
-  updateSet,
 } from '../../db/queries/sessions';
 import type { ExerciseInSession, SetLog } from '../../db/schema';
 import { cardioDuration } from '../../lib/cardio';
 import { confirmDialog } from '../../lib/confirm';
 import { clockTime, duration, plural, relativeDay, tonnageLabel } from '../../lib/format';
-import { fmtE1rm, fmtKg, e1rm, tonnage, weightStep } from '../../lib/strength';
+import { fmtE1rm, fmtKg, isWorkingSet, tonnage } from '../../lib/strength';
 import { c, font, radius, space, type } from '../../lib/theme';
 import { useActiveSession } from '../../stores/activeSession';
 
@@ -47,6 +45,8 @@ export default function SessionScreen() {
 
   const expandedSlotId = useActiveSession((s) => s.expandedSlotId);
   const expand = useActiveSession((s) => s.expand);
+  const layout = useActiveSession((s) => s.layout);
+  const setLayout = useActiveSession((s) => s.setLayout);
   const startRest = useActiveSession((s) => s.startRest);
   const stopRest = useActiveSession((s) => s.stopRest);
   const prFlash = useActiveSession((s) => s.prFlash);
@@ -56,10 +56,12 @@ export default function SessionScreen() {
   const [picking, setPicking] = useState(false);
   const [elapsed, setElapsed] = useState(0);
 
-  // Premier exercice non terminé : c'est celui qu'on veut voir déplié à l'ouverture.
+  // Premier exercice non terminé : c'est celui qu'on veut voir à l'ouverture,
+  // et celui qui prend le relais quand l'exercice affiché est retiré.
   useEffect(() => {
-    if (expandedSlotId || !view.length) return;
-    const next = view.find((e) => e.today.length < e.targetSets) ?? view[0];
+    if (!view.length) return;
+    if (expandedSlotId === CARDIO_STEP || view.some((e) => e.slotId === expandedSlotId)) return;
+    const next = view.find((e) => e.today.filter(isWorkingSet).length < e.targetSets) ?? view[0];
     expand(next.slotId);
   }, [view, expandedSlotId, expand]);
 
@@ -83,7 +85,7 @@ export default function SessionScreen() {
       sets: sets.filter((s) => s.setType !== 'warmup').length,
       tonnage: tonnage(sets),
       prs: sets.filter((s) => s.isPr).length,
-      done: view.filter((e) => e.today.length >= e.targetSets).length,
+      done: view.filter((e) => e.targetSets > 0 && e.today.filter(isWorkingSet).length >= e.targetSets).length,
     };
   }, [view]);
 
@@ -114,8 +116,20 @@ export default function SessionScreen() {
     close();
   }, [id, router, stopRest, resetSessionUi, totals.sets, cardio.length, cardioRunning]);
 
+  const discard = () =>
+    confirmDiscard(id, () => {
+      if (getCardioTimer()?.sessionId === id) saveCardioTimer(null);
+      discardSession(id);
+      stopRest();
+      resetSessionUi();
+      router.replace('/');
+    });
+
   const targetSets = view.reduce((sum, entry) => sum + entry.targetSets, 0);
-  const completedTargetSets = view.reduce((sum, entry) => sum + Math.min(entry.today.length, entry.targetSets), 0);
+  const completedTargetSets = view.reduce(
+    (sum, entry) => sum + Math.min(entry.today.filter(isWorkingSet).length, entry.targetSets),
+    0,
+  );
   const completion = targetSets ? completedTargetSets / targetSets : 0;
 
   if (!session) {
@@ -142,10 +156,34 @@ export default function SessionScreen() {
             Depuis {clockTime(session.startedAt)} · {duration(Math.max(0, Math.round(elapsed / 60000)))}
           </Text>
         </View>
+        <IconButton
+          name={layout === 'focus' ? 'list-outline' : 'locate-outline'}
+          accessibilityLabel={layout === 'focus' ? "Vue d'ensemble de la séance" : 'Un exercice à la fois'}
+          color={c.text}
+          onPress={() => setLayout(layout === 'focus' ? 'list' : 'focus')}
+        />
         <Button label="Terminer" icon="checkmark" onPress={finish} />
         </View>
       </View>
 
+      {layout === 'focus' ? (
+        <FocusView
+          sessionId={id}
+          routineName={session.routineName}
+          view={view}
+          currentId={expandedSlotId}
+          onSelect={expand}
+          onAddExercise={() => setPicking(true)}
+          onOpenExercise={(exerciseId) => router.push(`/exercises/${exerciseId}`)}
+          onRested={startRest}
+          onFinish={finish}
+          onDiscard={discard}
+          cardioCount={cardio.length}
+          cardioRunning={cardioRunning}
+          wide={wide}
+        />
+      ) : (
+      <>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -197,13 +235,7 @@ export default function SessionScreen() {
 
         <CardioSection sessionId={id} />
 
-        <Pressable accessibilityRole="button" onPress={() => confirmDiscard(id, () => {
-          if (getCardioTimer()?.sessionId === id) saveCardioTimer(null);
-          discardSession(id);
-          stopRest();
-          resetSessionUi();
-          router.replace('/');
-        })}>
+        <Pressable accessibilityRole="button" onPress={discard}>
           <Text style={styles.discard}>Abandonner cette séance</Text>
         </Pressable>
         </View>
@@ -235,9 +267,11 @@ export default function SessionScreen() {
       <View style={styles.footer}>
         {cardioRunning ? <CardioTimerBar sessionId={id} /> : <RestTimer />}
       </View>
+      </>
+      )}
 
       {prFlash ? (
-        <View style={styles.prBanner} pointerEvents="none">
+        <View style={[styles.prBanner, layout === 'focus' && styles.prBannerFocus]} pointerEvents="none">
           <Icon name="trophy" size={18} color={c.bg} />
           <Text style={styles.prBannerLabel}>
             Nouveau record — {fmtE1rm(prFlash.e1rm)} estimés
@@ -263,8 +297,6 @@ export default function SessionScreen() {
  * Un exercice dans la séance
  * ------------------------------------------------------------------ */
 
-type Draft = { weight: string; reps: string };
-
 function ExerciseBlock({
   index,
   sessionId,
@@ -282,121 +314,17 @@ function ExerciseBlock({
   onRested: (seconds: number) => void;
   onOpenExercise: () => void;
 }) {
-  const flashPr = useActiveSession((s) => s.flashPr);
-  const step = weightStep(entry.exercise.equipment);
+  const sets = useExerciseSets(sessionId, entry, onRested);
+  const doneCount = sets.workingDone;
+  const last = lastWorkingSets(entry);
 
-  const [drafts, setDrafts] = useState<Draft[]>([]);
-  const [pad, setPad] = useState<{ target: 'draft' | 'logged'; index: number; field: 'weight' | 'reps' } | null>(
-    null,
-  );
-  /** Tampon d'édition d'une série déjà enregistrée : on n'écrit qu'à la
-   *  fermeture du pavé, sinon chaque frappe déclencherait un recalcul de PR. */
-  const [loggedDraft, setLoggedDraft] = useState<Draft | null>(null);
-
-  const doneCount = entry.today.length;
-  /** Lignes restant à valider pour atteindre la cible. */
-  const pending = Math.max(0, entry.targetSets - doneCount);
-
-  useEffect(() => {
-    // On complète jusqu'à la cible sans jamais retirer une ligne ajoutée à la
-    // main : validate() se charge de retirer celle qui vient d'être loggée.
-    setDrafts((current) => {
-      if (current.length >= pending) return current;
-      const next = [...current];
-      while (next.length < pending) next.push(prefill(doneCount + next.length, entry));
-      return next;
-    });
-  }, [pending, doneCount, entry]);
-
-  const patchDraft = (index: number, patch: Partial<Draft>) =>
-    setDrafts((d) => d.map((row, i) => (i === index ? { ...row, ...patch } : row)));
-
-  function validate(index: number) {
-    const draft = drafts[index];
-    if (!draft) return;
-    const weightKg = parseFr(draft.weight);
-    const reps = Math.round(parseFr(draft.reps));
-    if (reps <= 0) {
-      setPad({ target: 'draft', index, field: 'reps' });
-      return;
-    }
-
-    const result = logSet({ sessionId, exerciseId: entry.exercise.id, weightKg, reps });
-    // Les lignes suivantes laissées vides héritent de ce qui vient d'être fait :
-    // le cas nominal reste « appuyer sur ✓ sans rien saisir » (§5).
-    setDrafts((d) =>
-      d
-        .filter((_, i) => i !== index)
-        .map((row) =>
-          row.weight === ''
-            ? { weight: formatFr(weightKg), reps: row.reps || String(reps) }
-            : row,
-        ),
-    );
-    setPad(null);
-
-    if (Platform.OS !== 'web') {
-      void Haptics.impactAsync(
-        result.isPr ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Light,
-      );
-    }
-    if (result.isPr) {
-      flashPr({
-        exerciseId: entry.exercise.id,
-        setId: result.set.id,
-        e1rm: e1rm(weightKg, reps),
-        at: Date.now(),
-      });
-    }
-    // Valider une série démarre le repos : c'est le geste, pas un bouton à part.
-    onRested(entry.restSeconds);
-  }
-
-  /** Ouvre le pavé sur une série déjà enregistrée. */
-  function openLogged(index: number, field: 'weight' | 'reps') {
-    const set = entry.today[index];
-    if (!set) return;
-    setLoggedDraft({ weight: formatFr(set.weightKg), reps: String(set.reps) });
-    setPad({ target: 'logged', index, field });
-  }
-
-  function commitLogged() {
-    if (!pad || pad.target !== 'logged' || !loggedDraft) return;
-    const set = entry.today[pad.index];
-    const reps = Math.round(parseFr(loggedDraft.reps));
-    if (set && reps > 0) {
-      updateSet(set.id, { weightKg: parseFr(loggedDraft.weight), reps });
-    }
-    setLoggedDraft(null);
-  }
-
-  function closePad() {
-    if (pad?.target === 'logged') commitLogged();
-    setPad(null);
-  }
-
-  const lastTimeLabel = entry.lastTime
-    ? `${fmtKg(Math.max(...entry.lastTime.sets.map((s) => s.weightKg)))} kg × ${entry.lastTime.sets
+  const lastTimeLabel = last.length && entry.lastTime
+    ? `${fmtKg(Math.max(...last.map((s) => s.weightKg)))} kg × ${last
         .map((s) => s.reps)
         .join(',')} · ${relativeDay(entry.lastTime.sessionDate)}`
     : 'Première fois sur cet exercice';
 
   const complete = doneCount >= entry.targetSets && entry.targetSets > 0;
-
-  const padRequest: NumPadRequest | null = pad
-    ? {
-        key: `${entry.slotId}:${pad.target}:${pad.index}:${pad.field}`,
-        title: entry.exercise.labelFr,
-        subtitle:
-          pad.target === 'draft'
-            ? `Série ${doneCount + pad.index + 1}${entry.targetReps ? ` · cible ${entry.targetReps} reps` : ''}`
-            : `Correction de la série ${pad.index + 1}`,
-        field: pad.field,
-        weight: pad.target === 'draft' ? (drafts[pad.index]?.weight ?? '') : (loggedDraft?.weight ?? ''),
-        reps: pad.target === 'draft' ? (drafts[pad.index]?.reps ?? '') : (loggedDraft?.reps ?? ''),
-        weightStep: step,
-      }
-    : null;
 
   return (
     <View style={[styles.block, expanded && styles.blockExpanded, complete && styles.blockDone]}>
@@ -435,43 +363,47 @@ function ExerciseBlock({
             <View style={setRowStyles.headerCheck} />
           </View>
 
-          {entry.today.map((set, i) => (
-            <SetRow
-              key={set.id}
-              index={i + 1}
-              previous={entry.lastTime?.sets[i] ?? null}
-              weight={formatFr(set.weightKg)}
-              reps={String(set.reps)}
-              logged={set}
-              setType={set.setType}
-              onPressWeight={() => openLogged(i, 'weight')}
-              onPressReps={() => openLogged(i, 'reps')}
-              onValidate={() => openLogged(i, 'weight')}
-              onLongPress={() => confirmDeleteSet(set, () => deleteSet(set.id))}
-            />
-          ))}
+          {entry.today.map((set, i) => {
+            const number = entry.today.slice(0, i + 1).filter(isWorkingSet).length;
+            return (
+              <SetRow
+                key={set.id}
+                index={number}
+                previous={isWorkingSet(set) ? (last[number - 1] ?? null) : null}
+                weight={formatFr(set.weightKg)}
+                reps={String(set.reps)}
+                logged={set}
+                setType={set.setType}
+                onPressWeight={() => sets.openLogged(i, 'weight')}
+                onPressReps={() => sets.openLogged(i, 'reps')}
+                onValidate={() => sets.openLogged(i, 'weight')}
+                onLongPress={() => confirmDeleteSet(set, () => deleteSet(set.id))}
+              />
+            );
+          })}
 
-          {drafts.map((draft, i) => (
-            <SetRow
-              key={`draft-${i}`}
-              index={doneCount + i + 1}
-              previous={entry.lastTime?.sets[doneCount + i] ?? null}
-              weight={draft.weight}
-              reps={draft.reps}
-              logged={null}
-              setType="working"
-              onPressWeight={() => setPad({ target: 'draft', index: i, field: 'weight' })}
-              onPressReps={() => setPad({ target: 'draft', index: i, field: 'reps' })}
-              onValidate={() => validate(i)}
-              onLongPress={() => setDrafts((d) => d.filter((_, j) => j !== i))}
-            />
-          ))}
+          {sets.drafts.map((draft, i) => {
+            const number = sets.draftNumber(i);
+            return (
+              <SetRow
+                key={`draft-${i}`}
+                index={number}
+                previous={draft.warmup ? null : (last[number - 1] ?? null)}
+                weight={draft.weight}
+                reps={draft.reps}
+                logged={null}
+                setType={draft.warmup ? 'warmup' : 'working'}
+                onPressWeight={() => sets.openDraft(i, 'weight')}
+                onPressReps={() => sets.openDraft(i, 'reps')}
+                onValidate={() => sets.validate(i)}
+                onLongPress={() => sets.removeDraft(i)}
+              />
+            );
+          })}
 
           <View style={styles.blockActions}>
             <Pressable
-              onPress={() =>
-                setDrafts((d) => [...d, d[d.length - 1] ?? prefill(doneCount + d.length, entry)])
-              }
+              onPress={sets.addDraft}
               style={({ pressed }) => [styles.addSet, pressed && { opacity: 0.6 }]}
             >
               <Icon name="add" size={16} color={c.textDim} />
@@ -495,40 +427,9 @@ function ExerciseBlock({
         </View>
       ) : null}
 
-      <NumPad
-        request={padRequest}
-        onChange={(patch) => {
-          if (!pad) return;
-          if (pad.target === 'draft') patchDraft(pad.index, patch);
-          else setLoggedDraft((d) => ({ weight: '', reps: '', ...d, ...patch }));
-        }}
-        onValidate={() => {
-          if (!pad) return;
-          if (pad.target === 'draft') validate(pad.index);
-          else closePad();
-        }}
-        onClose={closePad}
-      />
+      <NumPad {...sets.numPad} />
     </View>
   );
-}
-
-/**
- * Valeur pré-remplie de la série n° `setIndex` (0-based) :
- * la série correspondante de la dernière fois, sinon la dernière série faite
- * aujourd'hui, sinon la dernière série de la dernière fois.
- */
-function prefill(setIndex: number, entry: ExerciseInSession): Draft {
-  const previous = entry.lastTime?.sets[setIndex];
-  if (previous) return { weight: formatFr(previous.weightKg), reps: String(previous.reps) };
-
-  const today = entry.today[entry.today.length - 1];
-  if (today) return { weight: formatFr(today.weightKg), reps: String(today.reps) };
-
-  const lastEver = entry.lastTime?.sets[entry.lastTime.sets.length - 1];
-  if (lastEver) return { weight: formatFr(lastEver.weightKg), reps: String(lastEver.reps) };
-
-  return { weight: '', reps: entry.targetReps?.split('-')[0] ?? '' };
 }
 
 /* ------------------------------------------------------------------ *
@@ -664,5 +565,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingVertical: space.md,
   },
+  // En mode Focus, la barre du bas empile le repos et le bouton principal.
+  prBannerFocus: { bottom: 168 },
   prBannerLabel: { color: c.bg, fontSize: 15, fontWeight: '800' },
 });

@@ -21,7 +21,7 @@ const CIRC = 2 * Math.PI * R;
  * a été gelé pendant que l'écran était éteint, l'affichage est juste dès le
  * retour au premier plan, sans resynchronisation.
  */
-export function RestTimer() {
+export function RestTimer({ showIdle = true }: { showIdle?: boolean } = {}) {
   const rest = useActiveSession((s) => s.rest);
   const stopRest = useActiveSession((s) => s.stopRest);
   const extendRest = useActiveSession((s) => s.extendRest);
@@ -47,13 +47,13 @@ export function RestTimer() {
     }
   }, [remaining, rest]);
 
-  if (!rest) return (
+  if (!rest) return showIdle ? (
     <View style={styles.idle}>
       <Icon name="timer-outline" size={19} color={c.textFaint} />
       <Text style={styles.idleText}>Valide une série pour lancer ton repos.</Text>
       <View style={styles.autoBadge}><Text style={styles.autoLabel}>AUTO</Text></View>
     </View>
-  );
+  ) : null;
 
   const done = remaining <= 0;
   const progress = done ? 1 : Math.max(0, Math.min(1, 1 - remaining / rest.totalSeconds));

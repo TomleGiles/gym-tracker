@@ -64,7 +64,7 @@ mutations.
 | Progrès : historique, export JSON | `/history`, `/history/[id]` |
 | Volume hebdo par muscle | `/history/volume` |
 | Profil : stats depuis le début, objectif hebdo, déconnexion | `/profile` |
-| **Mode séance** | `/session/[id]` |
+| **Mode séance** : un exercice à la fois, ou toute la liste | `/session/[id]` |
 | Bilan de fin de séance | `/session/recap/[id]` |
 
 ## Compte
@@ -99,6 +99,34 @@ Ce qui donne une raison de revenir, toute la logique est dans
 - **Programmes de départ.** Un nouvel utilisateur choisit Push · Pull · Legs,
   Haut · Bas ou Full body (`db/seed/programs.ts`) : un appui crée les modèles,
   modifiables ensuite.
+
+## Mode séance
+
+Deux vues, à basculer depuis l'en-tête (préférence gardée en mémoire jusqu'au
+redémarrage de l'app, dans `stores/activeSession.ts`) :
+
+- **Focus**, par défaut (`components/SessionFocus.tsx`) : un exercice à la fois.
+  Un rail de pastilles en haut (un numéro par exercice, puis le cardio) montre
+  l'avancée et permet de sauter d'un exercice à l'autre. L'exercice affiche sa
+  cible, ses muscles et ses séries de la dernière fois. En dessous, la série en
+  cours en grand, avec des boutons ± pour la charge et les reps (le pavé
+  numérique s'ouvre d'un appui sur le chiffre). Le bouton principal et le chrono
+  de repos sont collés en bas, sous le pouce. Une fois la cible atteinte, un
+  bilan de l'exercice s'affiche et le bouton devient « Suivant : … ». Sur grand
+  écran, le programme reste visible dans une colonne à droite.
+- **Liste** : la vue d'ensemble d'avant, tous les exercices en accordéon.
+
+La saisie est commune aux deux vues (`components/useExerciseSets.ts`) :
+
+- **Échauffements.** « Échauffement » insère une série de montée en charge
+  avant la première série de travail : 50 % × 10, puis 70 % × 5, puis 85 % × 3.
+  Elle est enregistrée en `set_type = 'warmup'`, ne compte ni dans la cible ni
+  dans les records, et lance un repos plafonné à 60 s.
+- **Double progression.** Si la dernière fois cette série a atteint le haut de
+  la fourchette de reps (« 8-10 » → 10), l'app propose d'ajouter un cran de
+  charge (`weightStep`). La proposition s'applique d'un appui ; elle n'est
+  jamais imposée.
+- **Passer une série** retire le brouillon sans rien enregistrer.
 
 ## Cardio
 
